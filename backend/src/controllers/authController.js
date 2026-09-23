@@ -6,9 +6,9 @@ const User = require('../models/User');
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
 
 const ADMIN_CREDENTIALS = {
-    name: 'Janani Nagarajan',
-    email: 'bnjanani258@gmail.com',
-    password: '123456789'
+    name: process.env.admin_name,
+    email: process.env.admin_email,
+    password: process.env.admin_pass
 };
 
 const isAdminSignup = ({ name, email, password }) => {

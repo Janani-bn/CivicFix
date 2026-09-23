@@ -47,6 +47,7 @@ const Login = () => {
             <button
               type="button"
               className={`role-btn ${role === 'citizen' ? 'active' : ''}`}
+              aria-pressed={role === 'citizen'}
               onClick={() => setRole('citizen')}
             >
               <span className="role-icon">👤</span>
@@ -56,6 +57,7 @@ const Login = () => {
             <button
               type="button"
               className={`role-btn ${role === 'volunteer' ? 'active' : ''}`}
+              aria-pressed={role === 'volunteer'}
               onClick={() => setRole('volunteer')}
             >
               <span className="role-icon">🤝</span>
@@ -65,6 +67,7 @@ const Login = () => {
             <button
               type="button"
               className={`role-btn ${role === 'admin' ? 'active' : ''}`}
+              aria-pressed={role === 'admin'}
               onClick={() => setRole('admin')}
             >
               <span className="role-icon">🏛️</span>

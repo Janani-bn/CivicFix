@@ -1,6 +1,6 @@
 # Contributing to CivicFix
 
-Thank you for your interest in contributing to **CivicFix**!
+Thank you for your interest in contributing to **CivicFix**! **Kindly star the repository first!**
 
 CivicFix is an AI-powered platform that helps citizens report local civic issues such as potholes, garbage, water leaks, and streetlight failures, while helping authorities manage and resolve complaints efficiently.
 

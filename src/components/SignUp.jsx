@@ -93,6 +93,7 @@ const SignUp = () => {
               <button
                 type="button"
                 className={`role-btn ${formData.role === 'citizen' ? 'active' : ''}`}
+                aria-pressed={formData.role === 'citizen'}
                 onClick={() => setFormData(prev => ({ ...prev, role: 'citizen' }))}
               >
                 <span className="role-icon">👤</span>
@@ -102,6 +103,7 @@ const SignUp = () => {
               <button
                 type="button"
                 className={`role-btn ${formData.role === 'volunteer' ? 'active' : ''}`}
+                aria-pressed={formData.role === 'volunteer'}
                 onClick={() => setFormData(prev => ({ ...prev, role: 'volunteer' }))}
               >
                 <span className="role-icon">🤝</span>
@@ -111,6 +113,7 @@ const SignUp = () => {
               <button
                 type="button"
                 className={`role-btn ${formData.role === 'admin' ? 'active' : ''}`}
+                aria-pressed={formData.role === 'admin'}
                 onClick={() => setFormData(prev => ({ ...prev, role: 'admin' }))}
               >
                 <span className="role-icon">🏛️</span>

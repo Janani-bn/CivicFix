@@ -334,7 +334,11 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content animate-fade-in-up">
-        <button className="modal-close" onClick={onClose}>
+        <button
+          className="modal-close"
+          onClick={onClose}
+          aria-label="Close report form"
+        >
           <X size={24} />
         </button>
 

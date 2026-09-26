@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, AlertCircle, CheckCircle, Clock, MapPin, Phone, User, Calendar } from 'lucide-react';
 import './TrackComplaint.css';
 
-import { API_BASE } from '../services/api';
+import { API_BASE, API_ORIGIN } from '../services/api';
 
 const TrackComplaint = () => {
     const [complaintId, setComplaintId] = useState('');
@@ -126,7 +126,7 @@ const TrackComplaint = () => {
                                     <div className="info-section">
                                         <h3>Evidence Photo</h3>
                                         <img 
-                                            src={`http://localhost:3000${complaint.image_url}`} 
+                                            src={`${API_ORIGIN}${complaint.image_url}`}
                                             alt="Uploaded issue proof" 
                                             style={{ width: '100%', maxWidth: '400px', borderRadius: '12px', border: '1px solid #ddd', marginTop: '8px' }}
                                         />

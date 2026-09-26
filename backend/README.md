@@ -152,8 +152,16 @@ All errors return JSON with consistent structure:
 ## Development Notes
 
 - CORS is enabled for all origins (development)
-- Request body size limit: default Express limit
+- General request body size limit: 50mb
+- AI endpoints have a smaller configurable request body limit
+- AI input limits can be configured through environment variables:
+  - `AI_MAX_BODY_SIZE` — maximum request body size for AI endpoints (default: `100kb`)
+  - `AI_MAX_MESSAGE_LENGTH` — maximum `/api/ai/chat` message length (default: `4000` characters)
+  - `AI_MAX_DESCRIPTION_LENGTH` — maximum description length for `/api/ai/analyze-description` and `/api/ai/enhance-description` (default: `5000` characters)
+  - `AI_MAX_HISTORY_MESSAGES` — maximum number of chat history messages (default: `20`)
+  - `AI_MAX_HISTORY_MESSAGE_LENGTH` — maximum length of each chat history message (default: `4000` characters)
+- AI endpoints retain the existing rate limit of 20 requests per IP per minute
+- Oversized AI inputs are rejected before being sent to the AI service
 - No authentication implemented (add JWT/session for production)
-- No rate limiting (add for production)
 - Complaint IDs are auto-generated (format: CIV-XXXXXX)
 - Department assignment is automatic based on issue type

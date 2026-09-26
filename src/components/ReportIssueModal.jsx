@@ -24,7 +24,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
   const { token } = useAuth();
   const [view, setView] = useState('form'); // 'recommendation', 'form', 'success'
   const [successType, setSuccessType] = useState('created'); // 'created' or 'joined'
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [_isSubmitted, setIsSubmitted] = useState(false);
   const [issueId, setIssueId] = useState('');
   const [whatsappLink, setWhatsappLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +78,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     } else {
       setView('form');
       setLocationError(false);
+      setError(null);
     }
   }, [isOpen]);
 
@@ -187,27 +188,21 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
 
   const handleJoin = async (issueId) => {
     setSubmitting(true);
+    setError(null);
     try {
-      if (String(issueId).startsWith('mock')) {
-        const mockComplaintId = `CMP-${Math.floor(Math.random() * 10000)}`;
-        setIssueId(mockComplaintId);
-        setSuccessType('joined');
-        setIsSubmitted(true);
-        setView('success');
-        window.dispatchEvent(new Event('civicfix:guide-jump-to-joined-success'));
-        window.dispatchEvent(new Event('civicfix:complaint-joined'));
-        return;
-      }
-
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`${API_BASE}/complaints/${issueId}/join`, {
         method: 'POST',
         headers,
       });
-      if (!res.ok) throw new Error('Failed to join issue');
-      
-      const data = await res.json();
-      setIssueId(data.data.complaint_id);
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data || !data.success) {
+        throw new Error(data?.error?.message || data?.message || 'Failed to join issue');
+      }
+
+      setIssueId(data.data.complaint_id || data.data.id);
       setSuccessType('joined');
       setIsSubmitted(true);
       setView('success');
@@ -215,13 +210,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
       window.dispatchEvent(new Event('civicfix:complaint-joined'));
     } catch (err) {
       console.error('Join API Error:', err);
-      const mockComplaintId = `CMP-J${Math.floor(Math.random() * 10000)}`;
-      setIssueId(mockComplaintId);
-      setSuccessType('joined');
-      setIsSubmitted(true);
-      setView('success');
-      window.dispatchEvent(new Event('civicfix:guide-jump-to-joined-success'));
-      window.dispatchEvent(new Event('civicfix:complaint-joined'));
+      setError(err.message || 'Failed to join issue. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -326,6 +315,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     setIsSubmitted(false);
     setView('form');
     setSelectedFile(null);
+    setError(null);
     onClose();
   };
 
@@ -417,9 +407,11 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
               ))}
             </div>
 
+            {error && <div className="error-message" style={{ color: '#dc2626', marginTop: '1rem', textAlign: 'center' }}>{error}</div>}
+
             <div className="recommendation-actions">
               <p className="text-sm text-muted">None of these match your problem?</p>
-              <button className="btn-skip-recommendation" onClick={() => setView('form')} data-guide-id="report-new-issue">
+              <button className="btn-skip-recommendation" onClick={() => { setView('form'); setError(null); }} data-guide-id="report-new-issue">
                 No, Report a Different Issue
               </button>
             </div>

@@ -86,21 +86,44 @@ const initDatabase = async () => {
         await pool.query(createComplaintJoinsTableQuery);
         await pool.query(createVolunteerRequestsTableQuery);
 
+        // 1. Clean up existing duplicates in the database
+        await pool.query(`
+            DELETE FROM complaint_joins 
+            WHERE id NOT IN (
+                SELECT MIN(id) 
+                FROM complaint_joins 
+                GROUP BY complaint_id, IFNULL(user_id, ''), IFNULL(session_id, '')
+            )
+        `);
+
+        // 2. Add Unique Indexes to block future duplicate entries
+        await pool.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_complaint_user_join 
+            ON complaint_joins(complaint_id, user_id) 
+            WHERE user_id IS NOT NULL
+        `);
+
+        await pool.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_complaint_session_join 
+            ON complaint_joins(complaint_id, session_id) 
+            WHERE session_id IS NOT NULL AND user_id IS NULL
+        `);
+
         // If complaints table already existed before user_id was added, do a safe ALTER first.
         const columnsInfo = await pool.query("SELECT name FROM pragma_table_info('complaints')");
         const existingColumnNames = (columnsInfo.rows || []).map((c) => c.name);
         if (!existingColumnNames.includes('user_id')) {
             await pool.query('ALTER TABLE complaints ADD COLUMN user_id INTEGER');
         }
-        
+
         if (!existingColumnNames.includes('duration')) {
             await pool.query('ALTER TABLE complaints ADD COLUMN duration TEXT');
         }
-        
+
         if (!existingColumnNames.includes('allow_volunteers')) {
             await pool.query('ALTER TABLE complaints ADD COLUMN allow_volunteers TEXT DEFAULT "no"');
         }
-        
+
         if (!existingColumnNames.includes('want_updates')) {
             await pool.query('ALTER TABLE complaints ADD COLUMN want_updates TEXT DEFAULT "no"');
         }
@@ -120,7 +143,7 @@ const initDatabase = async () => {
         if (!existingColumnNames.includes('resolved_by')) {
             await pool.query('ALTER TABLE complaints ADD COLUMN resolved_by TEXT');
         }
-        
+
         // SQLite doesn't support IF NOT EXISTS for CREATE INDEX before version 3.27
         // But better-sqlite3 handles common errors. We'll wrap individual index creations.
         const indices = [

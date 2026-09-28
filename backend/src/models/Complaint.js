@@ -210,30 +210,53 @@ class Complaint {
 
     /**
      * Join an existing complaint (increment supporter count & record the join)
-     * @param {number} id - Complaint internal ID
+     * @param {number} complaintId - Complaint internal ID
      * @param {number|null} userId - User's internal ID (null if anonymous)
      * @param {string|null} sessionId - Anonymous session ID for tracking
      * @returns {Object} Updated complaint
      */
-    static async join(id, userId = null, sessionId = null) {
-        const query = `
-            UPDATE complaints
-            SET supporter_count = supporter_count + 1, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-            RETURNING *
-        `;
-        const result = await pool.query(query, [id]);
-        const complaint = result.rows[0] || null;
+    static async join(complaintId, userId = null, sessionId = null) {
+        try {
+            // Start transaction
+            await pool.query('BEGIN TRANSACTION');
 
-        if (complaint) {
-            // Record who joined so it appears in My Complaints
+            // 1. Check if the user or session has already joined this complaint
+            const checkQuery = `
+                SELECT 1 FROM complaint_joins 
+                WHERE complaint_id = $1 AND (
+                    (user_id = $2 AND user_id IS NOT NULL) OR 
+                    (session_id = $3 AND user_id IS NULL)
+                )
+            `;
+            const checkResult = await pool.query(checkQuery, [complaintId, userId, sessionId]);
+
+            // If a record already exists, stop here and return the current state
+            if (checkResult.rows && checkResult.rows.length > 0) {
+                await pool.query('COMMIT');
+                return await this.findById(complaintId);
+            }
+
+            // 2. If it's a new join, insert the record
             await pool.query(
-                `INSERT INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)`,
-                [id, userId, sessionId]
+                'INSERT INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)',
+                [complaintId, userId, sessionId]
             );
-        }
 
-        return complaint;
+            // 3. Increment the supporter count safely
+            await pool.query(
+                'UPDATE complaints SET supporter_count = supporter_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+                [complaintId]
+            );
+
+            // Commit the transaction
+            await pool.query('COMMIT');
+            return await this.findById(complaintId);
+
+        } catch (err) {
+            // If any error occurs, rollback the changes so the database isn't corrupted
+            await pool.query('ROLLBACK');
+            throw err;
+        }
     }
 
     /**

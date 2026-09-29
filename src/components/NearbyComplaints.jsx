@@ -49,8 +49,13 @@ const NearbyComplaints = () => {
     }
   };
 
+  const hasCoordinate = (value) => {
+    if (typeof value === 'number') return Number.isFinite(value);
+    return typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value));
+  };
+
   const handleUseSavedLocation = async () => {
-    if (!user?.latitude || !user?.longitude) return;
+    if (!hasCoordinate(user?.latitude) || !hasCoordinate(user?.longitude)) return;
     await fetchNearby(user.latitude, user.longitude);
   };
 
@@ -94,7 +99,7 @@ const NearbyComplaints = () => {
     );
   };
 
-  const savedAvailable = Boolean(user?.latitude && user?.longitude);
+  const savedAvailable = hasCoordinate(user?.latitude) && hasCoordinate(user?.longitude);
 
   return (
     <section className="section">

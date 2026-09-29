@@ -33,34 +33,11 @@ const LiveFeed = () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || 'Failed to load feed');
         setItems(data.data || []);
-      } catch (err) {
-        console.warn('Backend fetchFeed error. Simulating success...', err);
-        // MOCK FALLBACK for UI testing without backend
-        setTimeout(() => {
-          const localIssues = JSON.parse(localStorage.getItem('civicfix_issues') || '[]');
-          const formattedLocalIssues = localIssues.map(issue => ({
-            id: issue.id || Math.random(),
-            complaint_id: issue.complaint_id || issue.id || `CMP-${Math.floor(Math.random() * 8000)}`,
-            issue_type: issue.issueType || issue.title,
-            description: issue.description,
-            status: issue.status || 'Pending',
-            area: issue.area,
-            city: issue.city,
-            reporter_name: 'Guest Citizen',
-            created_at: issue.submittedAt || issue.created_at || new Date().toISOString()
-          }));
-
-          const allMockItems = [
-            ...formattedLocalIssues,
-            { id: 1, complaint_id: 'CMP-1234', issue_type: 'Pothole', description: 'Large pothole on main road', status: 'Pending', area: 'Downtown', city: 'Metropolis', reporter_name: 'John Doe', created_at: new Date().toISOString() },
-            { id: 2, complaint_id: 'CMP-5678', issue_type: 'Broken Streetlight', description: 'Streetlight is completely out', status: 'In Progress', area: 'East End', city: 'Metropolis', reporter_name: 'Jane Smith', created_at: new Date(Date.now() - 3600000).toISOString() },
-            { id: 'mock1', complaint_id: 'mock1', issue_type: 'Garbage Overflow', description: 'Garbage not collected for a week', status: 'Resolved', area: 'Northside', city: 'Metropolis', reporter_name: 'Bob Johnson', created_at: new Date(Date.now() - 86400000).toISOString() }
-          ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-          setItems(allMockItems);
-          setLoading(false);
-        }, 800);
-      }
+      }  catch (err) {
+  console.error('Backend fetchFeed error:', err);
+  setError(err.message || 'Failed to load the live feed. Please try again.');
+  setLoading(false);
+}
     };
     fetchFeed();
     const interval = setInterval(fetchFeed, 15000);

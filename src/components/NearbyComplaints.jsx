@@ -49,8 +49,10 @@ const NearbyComplaints = () => {
     }
   };
 
+  const hasCoordinate = (value) => value !== null && value !== undefined && value !== '';
+
   const handleUseSavedLocation = async () => {
-    if (!user?.latitude || !user?.longitude) return;
+    if (!hasCoordinate(user?.latitude) || !hasCoordinate(user?.longitude)) return;
     await fetchNearby(user.latitude, user.longitude);
   };
 
@@ -94,7 +96,7 @@ const NearbyComplaints = () => {
     );
   };
 
-  const savedAvailable = Boolean(user?.latitude && user?.longitude);
+  const savedAvailable = hasCoordinate(user?.latitude) && hasCoordinate(user?.longitude);
 
   return (
     <section className="section">

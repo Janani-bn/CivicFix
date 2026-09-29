@@ -50,8 +50,8 @@ const NearbyComplaints = () => {
   };
 
   const hasCoordinate = (value) => {
-    if (value === null || value === undefined || value === '') return false;
-    return Number.isFinite(Number(value));
+    if (typeof value === 'number') return Number.isFinite(value);
+    return typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value));
   };
 
   const handleUseSavedLocation = async () => {

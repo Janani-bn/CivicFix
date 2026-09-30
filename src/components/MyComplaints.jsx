@@ -40,6 +40,7 @@ const MyComplaints = () => {
 
       setSubmitted(submittedData.data || []);
       setJoined(joinedData.data || []);
+      setLoading(false);
     } catch (err) {
       console.warn('Backend fetch user profile error. Simulating success...', err);
       // MOCK FALLBACK for UI testing without backend

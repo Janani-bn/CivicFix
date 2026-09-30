@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/liveMap.test.js"
+    "test": "node --test tests/liveMap.test.js tests/liveFeed.test.js"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

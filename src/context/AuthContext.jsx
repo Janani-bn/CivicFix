@@ -42,33 +42,72 @@ export const AuthProvider = ({ children }) => {
     loadMe();
   }, [token]);
 
-  const signup = async ({ name, email, password, role = 'Citizen' }) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Signup failed');
+  const signup = async ({ name, email, password, role = 'citizen' }) => {
+  let data;
 
-      localStorage.setItem('civicfix_token', data.data.token);
-      setToken(data.data.token);
-      setUser(data.data.user);
-      return data.data.user;
-    } catch (err) {
-      console.warn('Backend signup error. Simulating success...', err);
-      return new Promise((resolve) => setTimeout(() => {
-        const mockToken = 'mock-jwt-token';
-        const assignedRole = email.toLowerCase().includes('admin') ? 'admin' : role.toLowerCase();
-        const mockUser = { id: 'mock-user-1', name, email, role: assignedRole };
-        localStorage.setItem('civicfix_token', mockToken);
-        setToken(mockToken);
-        setUser(mockUser);
-        resolve(mockUser);
-      }, 800));
+  try {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, role })
+    });
+
+    data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'Signup failed');
     }
-  };
+  } catch (err) {
+    console.warn('Backend signup error. Simulating success...', err);
+
+    return new Promise((resolve) => setTimeout(() => {
+      const mockToken = 'mock-jwt-token';
+      const assignedRole = email.toLowerCase().includes('admin')
+        ? 'admin'
+        : role.toLowerCase();
+
+      const mockUser = {
+        id: 'mock-user-1',
+        name,
+        email,
+        role: assignedRole
+      };
+
+      localStorage.setItem('civicfix_token', mockToken);
+      setToken(mockToken);
+      setUser(mockUser);
+
+      resolve(mockUser);
+    }, 800));
+  }
+
+  const token = data.data.token;
+  const user = data.data.user;
+
+  localStorage.setItem('civicfix_token', token);
+  setToken(token);
+  setUser(user);
+
+  // Volunteer accounts need admin approval.
+  if (role.toLowerCase() === 'volunteer') {
+    const requestRes = await fetch(`${API_BASE}/volunteers/request`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const requestData = await requestRes.json();
+
+    if (!requestRes.ok) {
+      throw new Error(
+        requestData.error?.message || 'Failed to submit volunteer request'
+      );
+    }
+  }
+
+  return user;
+};
 
   const login = async ({ email, password }) => {
     try {

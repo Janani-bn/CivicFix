@@ -42,21 +42,7 @@ export const AuthProvider = ({ children }) => {
     loadMe();
   }, [token]);
 
-  const signup = async ({ name, email, password, role = 'citizen' }) => {
-  let data;
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role })
-    });
-
-    data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error?.message || 'Signup failed');
-    }
+ 
   } catch (err) {
     console.warn('Backend signup error. Simulating success...', err);
 
@@ -95,7 +81,21 @@ export const AuthProvider = ({ children }) => {
       headers: {
         Authorization: `Bearer ${token}`
       }
+    }); const signup = async ({ name, email, password, role = 'citizen' }) => {
+  let data;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, role })
     });
+
+    data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'Signup failed');
+    }
 
     const requestData = await requestRes.json();
 

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE, API_ORIGIN } from '../services/api';
+import {
+  formatDateTime,
+  fetchComments,
+  postCommentApi,
+  CommentSection
+} from '../utils/liveFeedLogic';
 import './LiveFeed.css';
-
-const formatDateTime = (value) => {
-  if (!value) return '';
-  const iso = String(value).replace(' ', 'T');
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString();
-};
 
 const statusClass = (status) =>
   String(status || '').toLowerCase().replace(' ', '-');
@@ -94,14 +93,15 @@ const LiveFeed = () => {
     if (!force && comments[complaintId]?.loading) return;
     if (!force && comments[complaintId]?.list && !comments[complaintId]?.error) return;
 
-    setComments((prev) => ({ ...prev, [complaintId]: { loading: true, error: '', list: prev[complaintId]?.list || [] } }));
+    setComments((prev) => ({
+      ...prev,
+      [complaintId]: { loading: true, error: '', list: prev[complaintId]?.list || [] }
+    }));
     try {
-      const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(complaintId)}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to load comments. Please try again.');
+      const list = await fetchComments(complaintId, { apiBase: API_BASE });
       setComments((prev) => ({
         ...prev,
-        [complaintId]: { loading: false, error: '', list: data.data || [] }
+        [complaintId]: { loading: false, error: '', list }
       }));
     } catch (err) {
       console.error('ensureCommentsLoaded error:', err);
@@ -130,13 +130,10 @@ const LiveFeed = () => {
 
     setDrafts((prev) => ({ ...prev, [complaintId]: { ...draft, posting: true, error: '' } }));
     try {
-      const res = await fetch(`${API_BASE}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complaintId, name, message })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to post comment. Please try again.');
+      const newComment = await postCommentApi(
+        { complaintId, name, message },
+        { apiBase: API_BASE }
+      );
 
       setComments((prev) => {
         const existing = prev[complaintId]?.list || [];
@@ -145,11 +142,14 @@ const LiveFeed = () => {
           [complaintId]: {
             loading: false,
             error: '',
-            list: [...existing, data.data]
+            list: [...existing, newComment]
           }
         };
       });
-      setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false, error: '' } }));
+      setDrafts((prev) => ({
+        ...prev,
+        [complaintId]: { name: draft.name || '', message: '', posting: false, error: '' }
+      }));
     } catch (err) {
       console.error('postComment error:', err);
       setDrafts((prev) => ({
@@ -223,91 +223,17 @@ const LiveFeed = () => {
                         <div className="feed-meta">{formatDateTime(c.created_at)}</div>
                       </div>
 
-                      <div className="comments">
-                        <div className="comments-title">Comments</div>
-
-                        {commentState.error && (
-                          <div className="error-banner" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>{commentState.error}</span>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem', marginLeft: '0.5rem', cursor: 'pointer' }}
-                              onClick={() => ensureCommentsLoaded(complaintId, true)}
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        )}
-
-                        {commentState.loading ? (
-                          <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>Loading comments...</div>
-                        ) : (
-                          <div className="comment-list">
-                            {commentState.list.length === 0 ? (
-                              <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>
-                                No comments yet — be the first.
-                              </div>
-                            ) : (
-                              commentState.list.map((cm) => (
-                                <div key={cm.id} className="comment">
-                                  <div className="comment-head">
-                                    <div className="comment-author">{cm.author_name}</div>
-                                    <div className="comment-time">{formatDateTime(cm.created_at)}</div>
-                                  </div>
-                                  <div className="comment-msg">{cm.message}</div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-
-                        {draft.error && (
-                          <div className="error-banner" style={{ marginTop: '0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>{draft.error}</span>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem', marginLeft: '0.5rem', cursor: 'pointer' }}
-                              onClick={() => postComment(complaintId)}
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="comment-form">
-                          <input
-                            placeholder="Your name (optional)"
-                            value={draft.name}
-                            onChange={(e) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [complaintId]: { ...draft, name: e.target.value, error: '' }
-                              }))
-                            }
-                          />
-                          <input
-                            placeholder="Write a comment..."
-                            value={draft.message}
-                            onChange={(e) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [complaintId]: { ...draft, message: e.target.value, error: '' }
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') postComment(complaintId);
-                            }}
-                          />
-                          <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.65rem 1rem', borderRadius: '9999px' }}
-                            disabled={draft.posting || !draft.message.trim()}
-                            onClick={() => postComment(complaintId)}
-                          >
-                            {draft.posting ? 'Posting...' : 'Post'}
-                          </button>
-                        </div>
-                      </div>
+                      <CommentSection
+                        complaintId={complaintId}
+                        commentState={commentState}
+                        draft={draft}
+                        onRetryLoad={(id) => ensureCommentsLoaded(id, true)}
+                        onRetryPost={(id) => postComment(id)}
+                        onDraftChange={(id, nextDraft) =>
+                          setDrafts((prev) => ({ ...prev, [id]: nextDraft }))
+                        }
+                        onPostComment={(id) => postComment(id)}
+                      />
                     </div>
                   </div>
                 );

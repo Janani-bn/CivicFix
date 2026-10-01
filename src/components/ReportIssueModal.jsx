@@ -121,70 +121,77 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     );
   };
 
-  const fetchNearby = async (lat, lng) => {
-    try {
-      const response = await fetch(`${API_BASE}/complaints/nearby?lat=${lat}&lng=${lng}&radiusKm=5`);
-      const data = await response.json();
+ const fetchNearby = async (lat, lng) => {
+  try {
+    const response = await fetch(
+      `${API_BASE}/complaints/nearby?lat=${lat}&lng=${lng}&radiusKm=5`
+    );
+    const data = await response.json();
 
-      if (data.success && data.data.length > 0) {
-        setNearbyIssues(data.data.slice(0, 3));
-        setLocationName(data.data[0].area || 'your area');
-        setView('recommendation');
-      } else {
-        // Mock data to ensure Duplicate Check is shown for testing
-        setNearbyIssues([
-          { id: 'mock1', issue_type: 'Pothole', area: 'Downtown', supporter_count: 5 },
-          { id: 'mock2', issue_type: 'Broken Streetlight', area: 'Main Street', supporter_count: 2 },
-        ]);
-        setLocationName('your area');
-        setView('recommendation');
-      }
-    } catch (err) {
-      console.error('Nearby fetch error:', err);
-      // Fallback
-      setNearbyIssues([
-        { id: 'mock1', issue_type: 'Pothole', area: 'Downtown', supporter_count: 5 },
-        { id: 'mock2', issue_type: 'Water Leakage', area: 'Central Ave', supporter_count: 12 },
-      ]);
+    if (data.success && data.data.length > 0) {
+      setNearbyIssues(data.data.slice(0, 3));
+      setLocationName(data.data[0].area || 'your area');
+      setView('recommendation');
+    } else {
+      // No nearby complaints found
+      setNearbyIssues([]);
       setLocationName('your area');
-      setView('recommendation');
+      setView('form');
     }
-  };
+  } catch (err) {
+    console.error('Nearby fetch error:', err);
 
-  const fetchByAreaName = async (area) => {
-    if (!area) return;
-    setSubmitting(true);
-    try {
-      const response = await fetch(`${API_BASE}/complaints`);
-      const data = await response.json();
-      if (data.success) {
-        const matches = data.data.filter(i => (i.area || '').toLowerCase().includes(area.toLowerCase())).slice(0, 3);
-        if (matches.length > 0) {
-          setNearbyIssues(matches);
-          setLocationName(area);
-          setView('recommendation');
-          setLocationError(false);
-        } else {
-          setNearbyIssues([
-            { id: 'mock3', issue_type: 'Garbage overflow', area: area, supporter_count: 8 }
-          ]);
-          setLocationName(area);
-          setView('recommendation');
-          setLocationError(false);
-        }
+    // API error — do not show fake complaints
+    setNearbyIssues([]);
+    setLocationName('your area');
+    setView('form');
+  }
+};
+
+const fetchByAreaName = async (area) => {
+  if (!area) return;
+
+  setSubmitting(true);
+
+  try {
+    const response = await fetch(`${API_BASE}/complaints`);
+    const data = await response.json();
+
+    if (data.success) {
+      const matches = data.data
+        .filter(i =>
+          (i.area || '').toLowerCase().includes(area.toLowerCase())
+        )
+        .slice(0, 3);
+
+      if (matches.length > 0) {
+        setNearbyIssues(matches);
+        setLocationName(area);
+        setView('recommendation');
+        setLocationError(false);
+      } else {
+        // No matching complaints found
+        setNearbyIssues([]);
+        setLocationName(area);
+        setView('form');
+        setLocationError(false);
       }
-    } catch (err) {
-      console.error('Search failed:', err);
-      setNearbyIssues([
-        { id: 'mock3', issue_type: 'Garbage overflow', area: area, supporter_count: 8 }
-      ]);
+    } else {
+      setNearbyIssues([]);
       setLocationName(area);
-      setView('recommendation');
-      setLocationError(false);
-    } finally {
-      setSubmitting(false);
+      setView('form');
     }
-  };
+  } catch (err) {
+    console.error('Search failed:', err);
+
+    // API error — do not show fake complaints
+    setNearbyIssues([]);
+    setLocationName(area);
+    setView('form');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const handleJoin = async (issueId) => {
     setSubmitting(true);

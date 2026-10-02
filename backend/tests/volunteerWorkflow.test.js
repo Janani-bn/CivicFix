@@ -1,4 +1,3 @@
-```js
 const { test, before, after } = require("node:test");
 const assert = require("node:assert");
 
@@ -1900,4 +1899,4 @@ test("22. Issue #85: Complaint Field Type Validation Tests", async () => {
         validPayload.description
     );
 });
-```
+

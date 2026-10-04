@@ -3,6 +3,10 @@ import { X, Upload, CheckCircle, MapPin, Users } from 'lucide-react';
 import './ReportIssueModal.css';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../services/api';
+import {
+  fetchNearbyComplaints,
+  searchComplaintsByArea,
+} from '../utils/reportIssueLookup';
 
 const geocodeAddress = async (area, city) => {
   const query = `${area}, ${city}`;
@@ -122,75 +126,36 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
   };
 
   const fetchNearby = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `${API_BASE}/complaints/nearby?lat=${lat}&lng=${lng}&radiusKm=5`
-      );
-      const data = await response.json();
+  const result = await fetchNearbyComplaints({
+    lat,
+    lng,
+    apiBase: API_BASE,
+  });
 
-      if (data.success && data.data.length > 0) {
-        setNearbyIssues(data.data.slice(0, 3));
-        setLocationName(data.data[0].area || 'your area');
-        setView('recommendation');
-      } else {
-        // No nearby complaints found
-        setNearbyIssues([]);
-        setLocationName('your area');
-        setView('form');
-      }
-    } catch (err) {
-      console.error('Nearby fetch error:', err);
+  setNearbyIssues(result.issues);
+  setLocationName(result.locationName);
+  setView(result.view);
+  setLocationError(result.locationError);
+  setError(result.error);
+};
 
-      // API error — do not show fake complaints
-      setNearbyIssues([]);
-      setLocationName('your area');
-      setView('form');
-    }
-  };
-
-  const fetchByAreaName = async (area) => {
+    const fetchByAreaName = async (area) => {
     if (!area) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/complaints`);
-      const data = await response.json();
+      const result = await searchComplaintsByArea({
+        area,
+        apiBase: API_BASE,
+      });
 
-      if (data.success) {
-        const matches = data.data
-          .filter(i =>
-            (i.area || '').toLowerCase().includes(area.toLowerCase())
-          )
-          .slice(0, 3);
-
-        if (matches.length > 0) {
-          setNearbyIssues(matches);
-          setLocationName(area);
-          setView('recommendation');
-          setLocationError(false);
-        } else {
-          // No matching complaints found
-          setNearbyIssues([]);
-          setLocationName(area);
-          setView('form');
-          setLocationError(false);
-        }
-      } else {
-        setNearbyIssues([]);
-        setLocationName(area);
-        setView('form');
-        setError('Unable to search nearby issues. Please try again.');
-      }
-    } catch (err) {
-      console.error('Search failed:', err);
-
-      // API error — do not show fake complaints
-      setNearbyIssues([]);
-      setLocationName(area);
-      setView('form');
-      setError('Unable to search nearby issues. Please try again.');
+      setNearbyIssues(result.issues);
+      setLocationName(result.locationName);
+      setView(result.view);
+      setLocationError(result.locationError);
+      setError(result.error);
     } finally {
       setSubmitting(false);
     }
@@ -199,6 +164,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
   const handleJoin = async (issueId) => {
     setSubmitting(true);
     setError(null);
+
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`${API_BASE}/complaints/${issueId}/join`, {
@@ -209,14 +175,21 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data || !data.success) {
-        throw new Error(data?.error?.message || data?.message || 'Failed to join issue');
+        throw new Error(
+          data?.error?.message ||
+          data?.message ||
+          'Failed to join issue'
+        );
       }
 
       setIssueId(data.data.complaint_id || data.data.id);
       setSuccessType('joined');
       setIsSubmitted(true);
       setView('success');
-      window.dispatchEvent(new Event('civicfix:guide-jump-to-joined-success'));
+
+      window.dispatchEvent(
+        new Event('civicfix:guide-jump-to-joined-success')
+      );
       window.dispatchEvent(new Event('civicfix:complaint-joined'));
     } catch (err) {
       console.error('Join API Error:', err);

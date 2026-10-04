@@ -1,3 +1,4 @@
+/* global module */
 /**
  * Validate complaint creation data
  */
@@ -9,38 +10,35 @@ const validateComplaint = (req, res, next) => {
         city,
         issueType,
         description
-    } = req.body;
+    } = req.body || {};
 
     const errors = [];
 
     // Required fields
-    if (!name || name.trim() === '') {
+    if (typeof name !== 'string' || name.trim() === '') {
         errors.push('Name is required');
     }
 
-    if (!phone || phone.trim() === '') {
+    if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
+    } else if (!/^[\d\s\-+()]{10,}$/.test(phone)) {
+        errors.push('Phone number must be at least 10 digits');
     }
 
-    if (!area || area.trim() === '') {
+    if (typeof area !== 'string' || area.trim() === '') {
         errors.push('Area is required');
     }
 
-    if (!city || city.trim() === '') {
+    if (typeof city !== 'string' || city.trim() === '') {
         errors.push('City is required');
     }
 
-    if (!issueType || issueType.trim() === '') {
+    if (typeof issueType !== 'string' || issueType.trim() === '') {
         errors.push('Issue type is required');
     }
 
-    if (!description || description.trim() === '') {
+    if (typeof description !== 'string' || description.trim() === '') {
         errors.push('Description is required');
-    }
-
-    // Phone validation (basic)
-    if (phone && !/^[\d\s\-\+\(\)]{10,}$/.test(phone)) {
-        errors.push('Phone number must be at least 10 digits');
     }
 
     if (errors.length > 0) {
@@ -60,10 +58,10 @@ const validateComplaint = (req, res, next) => {
  * Validate status update
  */
 const validateStatusUpdate = (req, res, next) => {
-    const { status } = req.body;
+    const { status } = req.body || {};
     const validStatuses = ['Pending', 'In Progress', 'Resolved'];
 
-    if (!status || !validStatuses.includes(status)) {
+    if (!status || typeof status !== 'string' || !validStatuses.includes(status)) {
         return res.status(400).json({
             success: false,
             error: {
@@ -79,9 +77,9 @@ const validateStatusUpdate = (req, res, next) => {
  * Validate department assignment
  */
 const validateDepartmentAssignment = (req, res, next) => {
-    const { department } = req.body;
+    const { department } = req.body || {};
 
-    if (!department || department.trim() === '') {
+    if (!department || typeof department !== 'string' || department.trim() === '') {
         return res.status(400).json({
             success: false,
             error: {

@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node src/config/initDatabase.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --require ./tests/setup-env.js --test tests/volunteerWorkflow.test.js tests/jwt.test.js"
   },
   "keywords": [
     "civic-tech",

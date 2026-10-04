@@ -17,6 +17,15 @@ const statusClass = (status) => {
 };
 
 const NearbyComplaints = () => {
+  const hasValidCoordinates = (latitude, longitude) =>
+    latitude !== null &&
+    latitude !== undefined &&
+    latitude !== '' &&
+    longitude !== null &&
+    longitude !== undefined &&
+    longitude !== '' &&
+    Number.isFinite(Number(latitude)) &&
+    Number.isFinite(Number(longitude));
   const { token, user } = useAuth();
 
   const [complaints, setComplaints] = useState([]);
@@ -50,7 +59,7 @@ const NearbyComplaints = () => {
   };
 
   const handleUseSavedLocation = async () => {
-    if (!user?.latitude || !user?.longitude) return;
+    if (!hasValidCoordinates(user?.latitude, user?.longitude)) return;
     await fetchNearby(user.latitude, user.longitude);
   };
 
@@ -94,7 +103,10 @@ const NearbyComplaints = () => {
     );
   };
 
-  const savedAvailable = Boolean(user?.latitude && user?.longitude);
+  const savedAvailable = hasValidCoordinates(
+  user?.latitude,
+  user?.longitude
+);
 
   return (
     <section className="section">

@@ -12,13 +12,8 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole) {
-    // Check both auth context role (admin from backend) and localStorage role (volunteer, client-side)
-    const localRole = localStorage.getItem('userRole');
-    const effectiveRole = user?.role === requiredRole ? user.role : localRole;
-    if (effectiveRole !== requiredRole) {
-      return <Navigate to="/" replace />;
-    }
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to="/" replace />;
   }
 
   return children;

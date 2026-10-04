@@ -2,11 +2,20 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+try {
+    require('./src/config/jwt');
+} catch (err) {
+    console.error(`FATAL BOOT ERROR: ${err.message}`);
+    process.exit(1);
+}
+
 // Import routes
 const complaintRoutes = require('./src/routes/complaints');
 const authRoutes = require('./src/routes/auth');
 const commentRoutes = require('./src/routes/comments');
 const aiRoutes = require('./src/routes/ai');
+const path = require('path');
+const volunteerRoutes = require('./src/routes/volunteers');
 
 // Import middleware
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
@@ -37,7 +46,16 @@ app.use('/api/ai', aiRoutes);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', (req, res, next) => {
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const extension = path.extname(req.path).toLowerCase();
+
+    if (!allowedExtensions.includes(extension)) {
+        return res.status(404).end();
+    }
+
+    next();
+}, express.static('uploads'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -57,6 +75,9 @@ app.use('/api/auth', authRoutes);
 
 // Comments routes
 app.use('/api/comments', commentRoutes);
+
+// Volunteer routes
+app.use('/api/volunteers', volunteerRoutes);
 
 
 // 2. POST /assign - Assign complaint to department

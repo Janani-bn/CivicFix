@@ -12,8 +12,23 @@ Express.js backend for the CivicFix citizen complaint management system.
 | GET | `/api/complaints/:id` | Fetch complaint by ID |
 | GET | `/api/complaints` | List all complaints (with optional status/department filters) |
 | PUT | `/api/complaints/:id` | Update complaint status (Pending → In Progress → Resolved) |
+| POST | `/api/complaints/:id/claim` | Claim complaint (Volunteer/Admin only) |
+| POST | `/api/complaints/:id/resolve` | Resolve complaint (Volunteer/Admin only) |
+| POST | `/api/volunteers/request` | Submit volunteer enrollment request (Authenticated Citizen) |
+| GET | `/api/volunteers/pending` | List pending volunteer requests (Admin only) |
+| POST | `/api/volunteers/:id/approve` | Approve volunteer request (Admin only, promotes user to volunteer) |
+| POST | `/api/volunteers/:id/reject` | Reject volunteer request (Admin only) |
 | POST | `/api/assign` | Assign complaint to department |
 | GET | `/api/health` | Health check endpoint |
+
+### Volunteer Enrollment & Approval Workflow
+
+Normal registration always creates a `citizen` account. Volunteer access requires an authenticated volunteer request followed by admin approval. The server assigns the `volunteer` role after approval; clients cannot assign themselves the `volunteer` role during registration or login.
+
+1. **Submit Request**: A citizen submits a request via `POST /api/volunteers/request`.
+2. **Review Pending Requests**: An admin views all active pending requests via `GET /api/volunteers/pending`.
+3. **Approval**: An admin approves the request via `POST /api/volunteers/:id/approve`. The server updates `volunteer_requests.status = 'approved'` and sets `users.role = 'volunteer'`.
+4. **Re-Authentication**: The approved user logs in again to receive an updated JWT reflecting their `volunteer` role, enabling access to complaint claim and resolution endpoints.
 
 ### Department Routing Logic
 

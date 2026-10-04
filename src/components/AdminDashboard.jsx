@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
     AlertCircle,
     CheckCircle,
@@ -168,12 +168,17 @@ const AdminDashboard = () => {
 
     // Update complaint status
     const updateStatus = async (id, newStatus) => {
-        setUpdating({ ...updating, [id]: true });
+        setUpdating(prev => ({ ...prev, [id]: true }));
 
         try {
-            const response = await fetch(`${API_BASE}/complaints/${id}`, {
+            const token = localStorage.getItem('civicfix_token');
+
+            const response = await fetch(API_BASE + '/complaints/' + id, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + token
+                },
                 body: JSON.stringify({ status: newStatus })
             });
 
@@ -183,20 +188,17 @@ const AdminDashboard = () => {
                 throw new Error(data.error?.message || 'Failed to update status');
             }
 
-            // Update local state
-            setComplaints(complaints.map(c =>
-                c.id === id ? { ...c, status: newStatus } : c
-            ));
-            setUpdating({ ...updating, [id]: false });
+            // Update local state only after backend succeeds
+            setComplaints(prev =>
+                prev.map(c =>
+                    c.id === id ? { ...c, status: newStatus } : c
+                )
+            );
         } catch (err) {
             console.error('Update status error:', err);
-            // MOCK FALLBACK for UI testing without backend
-            setTimeout(() => {
-                setComplaints(complaints.map(c =>
-                    c.id === id ? { ...c, status: newStatus } : c
-                ));
-                setUpdating({ ...updating, [id]: false });
-            }, 800);
+            setError(err.message || 'Failed to update complaint status');
+        } finally {
+            setUpdating(prev => ({ ...prev, [id]: false }));
         }
     };
 

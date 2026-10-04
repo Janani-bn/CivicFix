@@ -2,6 +2,10 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaf
 import "leaflet/dist/leaflet.css";
 import { API_BASE } from "../services/api";
 import { useEffect, useState, useCallback } from "react";
+import {
+    fetchMapReports,
+    MapStatusNotice,
+} from "../utils/liveMapLogic";
 
 const getColor = (severity) => {
     const s = String(severity || "").toLowerCase();
@@ -40,57 +44,27 @@ const LiveMap = () => {
     const [mode, setMode] = useState("city"); // "myLocation" | "city"
     const [selectedCity, setSelectedCity] = useState("Chennai");
     const [activeCenter, setActiveCenter] = useState({ lat: 13.0827, lng: 80.2707, zoom: 13 });
+    const [loading, setLoading] = useState(true);
+    const [apiError, setApiError] = useState(null);
 
     // Load reports from both API (backend) and localStorage (immediate local)
     const loadReports = useCallback(async () => {
-        let apiReports = [];
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/complaints`);
-            const data = await res.json();
-            if (res.ok) apiReports = data.data || [];
+            const { apiError: err, reports: loadedReports } = await fetchMapReports({
+                apiBase: API_BASE,
+                fetchFn: window.fetch.bind(window),
+                storage: window.localStorage,
+            });
+            setApiError(err);
+            setReports(loadedReports);
         } catch (err) {
-            console.error("Failed to fetch reports from API:", err);
+            console.error("Failed to load map reports:", err);
+            setApiError("Failed to load complaints. Please try again.");
+            setReports([]);
+        } finally {
+            setLoading(false);
         }
-
-        let localReports = JSON.parse(localStorage.getItem("reports") || "[]");
-
-        if (apiReports.length === 0 && localReports.length === 0) {
-            const dummyReports = [
-                { id: "mock-1", lat: 13.0827, lng: 80.2707, severity: "High", issueType: "Broken Road", place: "Chennai Central", date: new Date().toLocaleDateString(), status: "Pending", department: "Roads Department", complaint_id: "CMP-M1" },
-                { id: "mock-2", lat: 13.0418, lng: 80.2341, severity: "Medium", issueType: "Garbage Overflow", place: "T Nagar", date: new Date().toLocaleDateString(), status: "In Progress", department: "Sanitation", complaint_id: "CMP-M2" },
-                { id: "mock-3", lat: 13.0012, lng: 80.2565, severity: "Low", issueType: "Streetlight Out", place: "Adyar", date: new Date().toLocaleDateString(), status: "Resolved", department: "Electrical", complaint_id: "CMP-M3" }
-            ];
-            localReports = dummyReports;
-            localStorage.setItem("reports", JSON.stringify(dummyReports));
-            if (!localStorage.getItem('civicfix_issues')) {
-                localStorage.setItem('civicfix_issues', JSON.stringify(dummyReports));
-            }
-        }
-
-        // Merge them, avoiding duplicates by complaint ID
-        const merged = [...apiReports];
-        const apiIds = new Set(apiReports.map(r => r.complaint_id || r.id));
-
-        localReports.forEach(r => {
-            const id = r.complaint_id || r.id;
-            if (id && !apiIds.has(id)) {
-                merged.push(r);
-            }
-        });
-
-        // Normalize lat/lng property names
-        const normalized = merged.map(r => ({
-            ...r,
-            lat: r.latitude || r.lat,
-            lng: r.longitude || r.lng,
-            issueType: r.issue_type || r.issueType || "Unknown",
-            place: r.area ? `${r.area}, ${r.city}` : (r.place || "Unknown"),
-            severity: r.severity || "Low",
-            status: r.status || "Pending",
-            date: r.created_at ? new Date(r.created_at).toLocaleDateString() : (r.date || "Today")
-        })).filter(r => r.lat && r.lng);
-
-        setReports(normalized);
     }, []);
 
     useEffect(() => {
@@ -297,6 +271,14 @@ const LiveMap = () => {
                         ` · ${reports.filter(r => !r.lat || !r.lng).length} without location`}
                 </span>
             </div>
+
+            {/* Loading / Empty / Error state notice */}
+            <MapStatusNotice
+                loading={loading}
+                apiError={apiError}
+                reportsCount={reports.length}
+                onRetry={loadReports}
+            />
 
             <MapContainer
                 center={[activeCenter.lat, activeCenter.lng]}

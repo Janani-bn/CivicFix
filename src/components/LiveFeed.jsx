@@ -89,35 +89,30 @@ const LiveFeed = () => {
     [items]
   );
 
-  const ensureCommentsLoaded = async (complaintId) => {
+  const ensureCommentsLoaded = async (complaintId, force = false) => {
     if (!complaintId) return;
-    if (comments[complaintId]?.loading) return;
-    if (comments[complaintId]?.list) return;
+    if (!force && comments[complaintId]?.loading) return;
+    if (!force && comments[complaintId]?.list && !comments[complaintId]?.error) return;
 
-    setComments((prev) => ({ ...prev, [complaintId]: { loading: true, error: '', list: [] } }));
+    setComments((prev) => ({ ...prev, [complaintId]: { loading: true, error: '', list: prev[complaintId]?.list || [] } }));
     try {
       const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(complaintId)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to load comments');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || 'Failed to load comments. Please try again.');
       setComments((prev) => ({
         ...prev,
         [complaintId]: { loading: false, error: '', list: data.data || [] }
       }));
     } catch (err) {
-      console.warn('Backend ensureCommentsLoaded error. Simulating success...', err);
-      // MOCK FALLBACK for UI testing without backend
-      setTimeout(() => {
-        setComments((prev) => ({
-          ...prev,
-          [complaintId]: { 
-            loading: false, 
-            error: '', 
-            list: [
-              { id: Date.now() + Math.random(), author_name: 'City Admin', message: 'We are looking into this issue.', created_at: new Date().toISOString() }
-            ] 
-          }
-        }));
-      }, 500);
+      console.error('ensureCommentsLoaded error:', err);
+      setComments((prev) => ({
+        ...prev,
+        [complaintId]: {
+          loading: false,
+          error: err.message || 'Failed to load comments. Please try again.',
+          list: prev[complaintId]?.list || []
+        }
+      }));
     }
   };
 
@@ -128,20 +123,20 @@ const LiveFeed = () => {
   }, [complaintIds.join('|')]);
 
   const postComment = async (complaintId) => {
-    const draft = drafts[complaintId] || { name: '', message: '' };
+    const draft = drafts[complaintId] || { name: '', message: '', posting: false, error: '' };
     const name = (draft.name || '').trim();
     const message = (draft.message || '').trim();
-    if (!message) return;
+    if (!message || draft.posting) return;
 
-    setDrafts((prev) => ({ ...prev, [complaintId]: { ...draft, posting: true } }));
+    setDrafts((prev) => ({ ...prev, [complaintId]: { ...draft, posting: true, error: '' } }));
     try {
       const res = await fetch(`${API_BASE}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ complaintId, name, message })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to post comment');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || 'Failed to post comment. Please try again.');
 
       setComments((prev) => {
         const existing = prev[complaintId]?.list || [];
@@ -154,24 +149,17 @@ const LiveFeed = () => {
           }
         };
       });
-      setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false } }));
+      setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false, error: '' } }));
     } catch (err) {
-      console.warn('Backend postComment error. Simulating success...', err);
-      // MOCK FALLBACK for UI testing without backend
-      setTimeout(() => {
-        setComments((prev) => {
-          const existing = prev[complaintId]?.list || [];
-          return {
-            ...prev,
-            [complaintId]: {
-              loading: false,
-              error: '',
-              list: [...existing, { id: Date.now(), author_name: name || 'Anonymous', message, created_at: new Date().toISOString() }]
-            }
-          };
-        });
-        setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false } }));
-      }, 800);
+      console.error('postComment error:', err);
+      setDrafts((prev) => ({
+        ...prev,
+        [complaintId]: {
+          ...draft,
+          posting: false,
+          error: err.message || 'Failed to post comment. Please try again.'
+        }
+      }));
     }
   };
 
@@ -208,7 +196,7 @@ const LiveFeed = () => {
               {items.map((c) => {
                 const complaintId = c.complaint_id;
                 const commentState = comments[complaintId] || { loading: false, error: '', list: [] };
-                const draft = drafts[complaintId] || { name: '', message: '', posting: false };
+                const draft = drafts[complaintId] || { name: '', message: '', posting: false, error: '' };
 
                 return (
                   <div key={c.id} className="feed-item">
@@ -239,8 +227,15 @@ const LiveFeed = () => {
                         <div className="comments-title">Comments</div>
 
                         {commentState.error && (
-                          <div className="error-banner" style={{ marginBottom: '0.75rem' }}>
-                            {commentState.error}
+                          <div className="error-banner" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>{commentState.error}</span>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem', marginLeft: '0.5rem', cursor: 'pointer' }}
+                              onClick={() => ensureCommentsLoaded(complaintId, true)}
+                            >
+                              Retry
+                            </button>
                           </div>
                         )}
 
@@ -266,6 +261,19 @@ const LiveFeed = () => {
                           </div>
                         )}
 
+                        {draft.error && (
+                          <div className="error-banner" style={{ marginTop: '0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>{draft.error}</span>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem', marginLeft: '0.5rem', cursor: 'pointer' }}
+                              onClick={() => postComment(complaintId)}
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        )}
+
                         <div className="comment-form">
                           <input
                             placeholder="Your name (optional)"
@@ -273,7 +281,7 @@ const LiveFeed = () => {
                             onChange={(e) =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [complaintId]: { ...draft, name: e.target.value }
+                                [complaintId]: { ...draft, name: e.target.value, error: '' }
                               }))
                             }
                           />
@@ -283,7 +291,7 @@ const LiveFeed = () => {
                             onChange={(e) =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [complaintId]: { ...draft, message: e.target.value }
+                                [complaintId]: { ...draft, message: e.target.value, error: '' }
                               }))
                             }
                             onKeyDown={(e) => {

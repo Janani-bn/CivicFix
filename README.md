@@ -65,6 +65,19 @@ GEMINI_API_KEY=your_actual_api_key_here
 
 The AI chatbot will work once the key is set. Without it, the rest of the app functions normally — the chatbot simply shows "AI unavailable."
 
+## JWT Authentication Setup
+
+CivicFix requires a securely generated JWT secret to run. If this is missing or uses the default placeholder, the application will crash on boot to prevent security vulnerabilities.
+
+1. Generate a secure random string (at least 32 characters). You can generate a 48-byte hex string by running this command in your terminal:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+   ```
+2. Add the generated string to your `backend/.env` file:
+   ```
+   JWT_SECRET=your_generated_secret_here
+   ```
+
 ## WhatsApp Notifications Setup
 
 CivicFix sends WhatsApp notifications to citizens when their complaint is created, updated, or resolved. This uses Meta's official WhatsApp Cloud API.

@@ -40,28 +40,30 @@ Normal registration always creates a `citizen` account. Volunteer access require
 | Electric, Streetlight, Power | Electrical Department |
 | Other | General Administration |
 
-### Database Schema (PostgreSQL)
+### Database Schema (SQLite)
+
+The backend uses SQLite via `better-sqlite3`. The database file (`civicfix.sqlite`) is created automatically in the `backend/` directory on first run.
 
 ```sql
 complaints:
-- id (SERIAL PRIMARY KEY)
-- complaint_id (VARCHAR 20, UNIQUE) - Public-facing ID like CIV-ABC123
-- name (VARCHAR 255)
-- phone (VARCHAR 20)
-- email (VARCHAR 255)
-- area (VARCHAR 255)
-- city (VARCHAR 255)
-- landmark (VARCHAR 255)
-- issue_type (VARCHAR 100)
+- id (INTEGER PRIMARY KEY AUTOINCREMENT)
+- complaint_id (TEXT UNIQUE) - Public-facing ID like CIV-ABC123
+- name (TEXT)
+- phone (TEXT)
+- email (TEXT)
+- area (TEXT)
+- city (TEXT)
+- landmark (TEXT)
+- issue_type (TEXT)
 - description (TEXT)
-- severity (VARCHAR 20) - low/medium/high
-- image_url (VARCHAR 500)
-- latitude (DECIMAL)
-- longitude (DECIMAL)
-- status (VARCHAR 50) - Pending/In Progress/Resolved
-- department (VARCHAR 100)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
+- severity (TEXT) - low/medium/high
+- image_url (TEXT)
+- latitude (REAL)
+- longitude (REAL)
+- status (TEXT) - Pending/In Progress/Resolved
+- department (TEXT)
+- created_at (DATETIME)
+- updated_at (DATETIME)
 ```
 
 ## Setup Instructions
@@ -73,22 +75,23 @@ cd backend
 npm install
 ```
 
-### 2. Configure Database
+### 2. Configure Environment
 
-Create a PostgreSQL database and update `.env`:
+The backend uses a local SQLite database file (`civicfix.sqlite`) that is created automatically. No external database setup is required.
 
 ```bash
 # Copy example env file
 cp .env.example .env
-
-# Edit .env with your database credentials
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=civicfix
-DB_USER=postgres
-DB_PASSWORD=your_password
 ```
+
+Edit `.env` and configure the required variables:
+
+- `PORT` — Server port (default: 3000)
+- `JWT_SECRET` — **Required.** A secure random string for authentication. Generate one with:
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+  ```
+- `GEMINI_API_KEY` — Optional. Required only for AI chatbot features.
 
 ### 3. Initialize Database
 
@@ -96,7 +99,7 @@ DB_PASSWORD=your_password
 npm run init-db
 ```
 
-This creates the `complaints` table with proper indexes.
+This creates the SQLite database file (`civicfix.sqlite`) and all required tables in the `backend/` directory.
 
 ### 4. Start the Server
 
@@ -132,7 +135,7 @@ backend/
 ├── server.js                    # Entry point
 ├── src/
 │   ├── config/
-│   │   ├── database.js          # PostgreSQL connection pool
+│   │   ├── database.js          # SQLite database connection
 │   │   └── initDatabase.js      # Table creation script
 │   ├── controllers/
 │   │   └── complaintController.js # Request handlers

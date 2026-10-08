@@ -23,7 +23,7 @@ const validateComplaint = (req, res, next) => {
 
     if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
-    } else if (!/^[\d\s\-+()]{10,}$/.test(phone)) {
+    } else if (phone.replace(/\D/g, '').length < 10) {
         errors.push('Phone number must be at least 10 digits');
     }
 

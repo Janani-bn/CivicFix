@@ -42,10 +42,12 @@ const signup = async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
 
-        if (!name || !name.trim()) {
+        // Type-check before .trim() — a numeric name/email crashed with a
+        // 500 ('trim is not a function') instead of a clean 400.
+        if (typeof name !== 'string' || name.trim() === '') {
             return res.status(400).json({ success: false, error: { message: 'Name is required' } });
         }
-        if (!email || !email.trim()) {
+        if (typeof email !== 'string' || email.trim() === '') {
             return res.status(400).json({ success: false, error: { message: 'Email is required' } });
         }
         if (!password || String(password).length < 6) {
@@ -82,7 +84,8 @@ const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
-        if (!email || !email.trim() || !password) {
+        // Same type guard on login — a non-string email crashed .trim().
+        if (typeof email !== 'string' || email.trim() === '' || typeof password !== 'string' || password === '') {
             return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
         }
 

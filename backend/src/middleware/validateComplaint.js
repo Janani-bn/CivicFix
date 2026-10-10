@@ -23,7 +23,9 @@ const validateComplaint = (req, res, next) => {
 
     if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
-    } else if (!/^[\d\s\-+()]{10,}$/.test(phone)) {
+    } else if (!/^[\d\s\-+()]+$/.test(phone) || phone.replace(/\D/g, '').length < 10) {
+        // Count DIGITS, not formatting characters — '----------' passed the
+        // old length-based regex and produced broken WhatsApp links.
         errors.push('Phone number must be at least 10 digits');
     }
 

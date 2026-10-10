@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node src/config/initDatabase.js",
-    "test": "node --require ./tests/setup-env.js --test tests/volunteerWorkflow.test.js tests/jwt.test.js tests/complaintUpload.test.js tests/whatsapp.test.js"
+    "test": "node --require ./tests/setup-env.js --test tests/volunteerWorkflow.test.js tests/jwt.test.js tests/complaintUpload.test.js tests/whatsapp.test.js tests/authValidation.test.js"
   },
   "keywords": [
     "civic-tech",

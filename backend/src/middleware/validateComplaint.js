@@ -1,4 +1,6 @@
 /* global module */
+const { removeUploadedFile } = require('./uploadMiddleware');
+
 /**
  * Validate complaint creation data
  */
@@ -42,6 +44,9 @@ const validateComplaint = (req, res, next) => {
     }
 
     if (errors.length > 0) {
+        removeUploadedFile(req.file);
+        req.file = undefined;
+
         return res.status(400).json({
             success: false,
             error: {

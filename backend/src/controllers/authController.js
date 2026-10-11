@@ -40,15 +40,15 @@ const signToken = (user) => {
 
 const signup = async (req, res, next) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password } = req.body || {};
 
-        if (!name || !name.trim()) {
+        if (typeof name !== 'string' || !name.trim()) {
             return res.status(400).json({ success: false, error: { message: 'Name is required' } });
         }
-        if (!email || !email.trim()) {
+        if (typeof email !== 'string' || !email.trim()) {
             return res.status(400).json({ success: false, error: { message: 'Email is required' } });
         }
-        if (!password || String(password).length < 6) {
+        if (typeof password !== 'string' || password.length < 6) {
             return res.status(400).json({ success: false, error: { message: 'Password must be at least 6 characters' } });
         }
 
@@ -80,9 +80,9 @@ const signup = async (req, res, next) => {
 
 const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body || {};
 
-        if (!email || !email.trim() || !password) {
+        if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
             return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
         }
 

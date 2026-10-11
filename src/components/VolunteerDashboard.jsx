@@ -135,7 +135,7 @@ const VolunteerDashboard = () => {
 
     const myCases = reports.filter(isMyCase);
     const availableCases = reports.filter(
-        (r) => r.status === "Pending" && canVolunteerTake(r)
+    (r) => r.status === "Pending" && canVolunteerTake(r) && r.allow_volunteers !== "no"
     );
 
     const filteredAvailable =

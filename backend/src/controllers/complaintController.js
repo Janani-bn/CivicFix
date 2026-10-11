@@ -2,6 +2,7 @@ const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const { routeToDepartment } = require('../utils/departmentRouter');
 const { generateWhatsAppLink } = require('../utils/whatsapp');
+const { removeUploadedFile } = require('../middleware/uploadMiddleware');
 
 /**
  * Create a new complaint
@@ -47,6 +48,8 @@ const createComplaint = async (req, res, next) => {
             }
         });
     } catch (err) {
+        removeUploadedFile(req.file);
+        req.file = undefined;
         next(err);
     }
 };
@@ -343,6 +346,13 @@ const claimComplaint = async (req, res, next) => {
             return res.status(409).json({
                 success: false,
                 error: { message: 'Complaint is already claimed or not in a claimable state' }
+            });
+        }
+
+        if (complaint.allow_volunteers === 'no') {
+            return res.status(403).json({
+                success: false,
+                error: { message: 'This complaint does not allow volunteer claims' }
             });
         }
 

@@ -211,7 +211,8 @@ test('3. Authorized volunteer claim should succeed', async () => {
         city: 'Chennai',
         issueType: 'Garbage',
         description: 'Test garbage',
-        severity: 'medium'
+        severity: 'medium',
+        allowVolunteers: 'yes'
     });
 
     const res = await fetch(`${baseUrl}/complaints/${testComplaint.id}/claim`, {
@@ -683,7 +684,8 @@ test('19. End-to-End Real World Volunteer Enrollment & Complaint Management Work
         city: 'Chennai',
         issueType: 'Water Leak',
         description: 'E2E pipeline leak',
-        severity: 'low'
+        severity: 'low',
+        allowVolunteers: 'yes'
     });
 
     // Step 7: Verify citizen receives 403 when claiming
@@ -1086,4 +1088,77 @@ test('22. Issue #85: Complaint Field Type Validation Tests', async () => {
     assert.strictEqual(data10.data.city, validPayload.city);
     assert.strictEqual(data10.data.issueType, validPayload.issueType);
     assert.strictEqual(data10.data.description, validPayload.description);
+});
+
+test('23. Claiming a complaint with allow_volunteers=no is rejected with 403', async () => {
+    const noVolComplaint = await Complaint.create({
+        name: 'No Vol Reporter',
+        phone: '1234567890',
+        area: 'Test Area',
+        city: 'Test City',
+        issueType: 'Pothole',
+        description: 'No volunteers allowed',
+        severity: 'medium',
+        allowVolunteers: 'no'
+    });
+
+    const res = await fetch(`${baseUrl}/complaints/${noVolComplaint.id}/claim`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${volunteerToken}`
+        }
+    });
+    assert.strictEqual(res.status, 403);
+    const data = await res.json();
+    assert.strictEqual(data.success, false);
+
+    const fresh = await Complaint.findById(noVolComplaint.id);
+    assert.strictEqual(fresh.status, 'Pending');
+    assert.strictEqual(fresh.claimed_by_user_id, null);
+});
+
+test('24. Claiming a complaint with allow_volunteers=yes succeeds', async () => {
+    const yesVolComplaint = await Complaint.create({
+        name: 'Yes Vol Reporter',
+        phone: '1234567890',
+        area: 'Test Area',
+        city: 'Test City',
+        issueType: 'Garbage',
+        description: 'Volunteers welcome',
+        severity: 'low',
+        allowVolunteers: 'yes'
+    });
+
+    const res = await fetch(`${baseUrl}/complaints/${yesVolComplaint.id}/claim`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${volunteerToken}`
+        }
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.success, true);
+    assert.strictEqual(data.data.status, 'In Progress');
+});
+
+test('25. Database guard rejects claim on allow_volunteers=no even via direct model call', async () => {
+    const guardComplaint = await Complaint.create({
+        name: 'Guard Test',
+        phone: '1234567890',
+        area: 'Test Area',
+        city: 'Test City',
+        issueType: 'Road',
+        description: 'Database guard test',
+        severity: 'medium',
+        allowVolunteers: 'no'
+    });
+
+    const result = await Complaint.claim(guardComplaint.id, volunteerUser.id, volunteerUser.name);
+    assert.strictEqual(result, null);
+
+    const fresh = await Complaint.findById(guardComplaint.id);
+    assert.strictEqual(fresh.status, 'Pending');
+    assert.strictEqual(fresh.claimed_by_user_id, null);
 });

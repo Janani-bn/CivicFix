@@ -325,7 +325,7 @@ class Complaint {
                 claimed_by_user_id = $1,
                 claimed_by = $2,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $3 AND status = 'Pending' AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $1)
+            WHERE id = $3 AND status = 'Pending' AND allow_volunteers != 'no' AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $1)
             RETURNING *
         `;
 

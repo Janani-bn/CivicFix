@@ -9,9 +9,10 @@ const generateWhatsAppLink = (phone, details) => {
 
     // Remove any non-numeric characters and ensure '91' prefix
     let cleanPhone = phone.replace(/\D/g, '');
-    if (!cleanPhone.startsWith('91')) {
-        cleanPhone = '91' + cleanPhone;
-    }
+    
+    if (cleanPhone.length === 10) {
+    cleanPhone = '91' + cleanPhone;
+}
 
     const { complaintId, issueType, area, city, status } = details;
     const location = `${area}, ${city}`;

@@ -27,7 +27,8 @@ const upload = require('../middleware/uploadMiddleware');
 const {
     authenticate,
     authenticateOptional,
-    requireVolunteer
+    requireVolunteer,
+    requireAdmin
 } = require('../middleware/auth');
 
 const authorizeAdmin = require('../middleware/authorizeAdmin');
@@ -77,6 +78,12 @@ router.post('/:id/join', authenticateOptional, joinComplaint);
 
 // 8. POST /assign - Assign complaint to department
 // (Note: This is mounted at /api/assign in server.js)
-router.post('/assign', validateDepartmentAssignment, assignComplaint);
+router.post(
+    '/assign',
+    authenticate,
+    requireAdmin,
+    validateDepartmentAssignment,
+    assignComplaint
+);
 
 module.exports = router;

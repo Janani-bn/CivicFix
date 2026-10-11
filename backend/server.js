@@ -27,6 +27,7 @@ const initDatabase = require('./src/config/initDatabase');
 // Import controllers for direct mounting
 const { assignComplaint } = require('./src/controllers/complaintController');
 const { validateDepartmentAssignment } = require('./src/middleware/validateComplaint');
+const { authenticate, requireAdmin } = require('./src/middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,7 +83,13 @@ app.use('/api/volunteers', volunteerRoutes);
 
 // 2. POST /assign - Assign complaint to department
 // Mounted directly as per architecture spec
-app.post('/api/assign', validateDepartmentAssignment, assignComplaint);
+app.post(
+    '/api/assign',
+    authenticate,
+    requireAdmin,
+    validateDepartmentAssignment,
+    assignComplaint
+);
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);
@@ -90,18 +97,21 @@ app.use(notFoundHandler);
 // Global error handler
 app.use(errorHandler);
 
-// Start server (after DB init)
-initDatabase()
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`🚀 CivicFix API Server running on port ${PORT}`);
-            console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-            console.log(`📝 API Base: http://localhost:${PORT}/api`);
+
+if (require.main === module) {
+    // Start server only when this file is run directly.
+    initDatabase()
+        .then(() => {
+            app.listen(PORT, () => {
+                console.log(`🚀 CivicFix API Server running on port ${PORT}`);
+                console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+                console.log(`📝 API Base: http://localhost:${PORT}/api`);
+            });
+        })
+        .catch((err) => {
+            console.error('Failed to initialize database:', err);
+            process.exit(1);
         });
-    })
-    .catch((err) => {
-        console.error('Failed to initialize database:', err);
-        process.exit(1);
-    });
+}
 
 module.exports = app;

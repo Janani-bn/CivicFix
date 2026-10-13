@@ -1,6 +1,18 @@
 /* global module */
 const { removeUploadedFile } = require('./uploadMiddleware');
 const VALID_SEVERITIES = new Set(['low', 'medium', 'high']);
+const { COMPLAINT_FIELD_LIMITS } = require('../utils/complaintLimits');
+
+/**
+ * Push a length error when the value is a string longer than the allowed max.
+ * Non-string values are ignored here; the required-field checks below already
+ * report those.
+ */
+const pushLengthError = (errors, label, value, max) => {
+    if (typeof value === 'string' && value.length > max) {
+        errors.push(`${label} must not exceed ${max} characters`);
+    }
+};
 
 /**
  * Validate complaint creation data
@@ -9,10 +21,13 @@ const validateComplaint = (req, res, next) => {
     const {
         name,
         phone,
+        email,
         area,
         city,
+        landmark,
         issueType,
-        description
+        description,
+        duration
     } = req.body || {};
 
     const errors = [];
@@ -57,6 +72,18 @@ const validateComplaint = (req, res, next) => {
     if (typeof description !== 'string' || description.trim() === '') {
         errors.push('Description is required');
     }
+
+    // Length limits. Without these a single request can store megabytes of text
+    // because the body parsers allow up to 50mb.
+    pushLengthError(errors, 'Name', name, COMPLAINT_FIELD_LIMITS.name);
+    pushLengthError(errors, 'Phone', phone, COMPLAINT_FIELD_LIMITS.phone);
+    pushLengthError(errors, 'Email', email, COMPLAINT_FIELD_LIMITS.email);
+    pushLengthError(errors, 'Area', area, COMPLAINT_FIELD_LIMITS.area);
+    pushLengthError(errors, 'City', city, COMPLAINT_FIELD_LIMITS.city);
+    pushLengthError(errors, 'Landmark', landmark, COMPLAINT_FIELD_LIMITS.landmark);
+    pushLengthError(errors, 'Issue type', issueType, COMPLAINT_FIELD_LIMITS.issueType);
+    pushLengthError(errors, 'Description', description, COMPLAINT_FIELD_LIMITS.description);
+    pushLengthError(errors, 'Duration', duration, COMPLAINT_FIELD_LIMITS.duration);
 
     if (errors.length > 0) {
         removeUploadedFile(req.file);

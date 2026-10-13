@@ -7,24 +7,18 @@ const {
     AI_MAX_HISTORY_MESSAGE_LENGTH
 } = require('../utils/aiLimits');
 
-const rateLimitMap = new Map();
+const { createRateLimiter } = require('../middleware/rateLimit');
+
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 20;
 
-function checkRateLimit(ip) {
-    const now = Date.now();
-    const entry = rateLimitMap.get(ip);
+const aiRateLimiter = createRateLimiter({
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX,
+    message: 'Too many AI requests. Please wait a moment.'
+});
 
-    if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-        rateLimitMap.set(ip, { windowStart: now, count: 1 });
-        return true;
-    }
-
-    if (entry.count >= RATE_LIMIT_MAX) return false;
-
-    entry.count++;
-    return true;
-}
+const checkRateLimit = (ip) => aiRateLimiter.check(ip);
 
 /**
  * POST /api/ai/chat

@@ -83,46 +83,8 @@ const AdminDashboard = () => {
             setComplaints(sortedComplaints);
         } catch (err) {
             console.error('Fetch complaints error:', err);
-            // MOCK FALLBACK for UI testing without backend
-            const localIssues = JSON.parse(localStorage.getItem('civicfix_issues') || '[]');
-            const formattedLocalIssues = localIssues.map(issue => ({
-                id: issue.id || Math.random(),
-                complaint_id: issue.complaint_id || issue.id || `CMP-${Math.floor(Math.random() * 8000)}`,
-                issue_type: issue.issueType || issue.title,
-                area: issue.area,
-                city: issue.city,
-                status: issue.status || 'Pending',
-                supporter_count: issue.supporter_count || 1,
-                department: issue.department || 'General Administration',
-                name: 'Guest Citizen',
-                phone: 'N/A',
-                description: issue.description,
-                created_at: issue.submittedAt || issue.created_at || new Date().toISOString()
-            }));
-
-            const allMockComplaints = [
-                ...formattedLocalIssues,
-                { id: '1', complaint_id: 'CMP-1234', issue_type: 'Pothole', area: 'Downtown', city: 'Metropolis', status: 'Pending', supporter_count: 5, department: 'Roads Department', name: 'John Doe', phone: '1234567890', description: 'Large pothole on main street.', created_at: new Date(Date.now() - 40000).toISOString() },
-                { id: '2', complaint_id: 'CMP-5678', issue_type: 'Garbage overflow', area: 'Northside', city: 'Metropolis', status: 'In Progress', supporter_count: 1, department: 'Sanitation', name: 'Jane Smith', phone: '0987654321', description: 'Trash not picked up for days.', created_at: new Date(Date.now() - 90000).toISOString() },
-                { id: 'mock1', complaint_id: 'mock1', issue_type: 'Broken Streetlight', area: 'East End', city: 'Metropolis', status: 'Resolved', supporter_count: 2, department: 'Electrical Department', name: 'Bob Johnson', phone: '5551234567', description: 'Streetlight is out.', created_at: new Date(Date.now() - 190000).toISOString() },
-            ];
-
-            let filteredMockComplaints = allMockComplaints;
-            if (filters.status !== 'All Statuses') {
-                filteredMockComplaints = filteredMockComplaints.filter(c => c.status === filters.status);
-            }
-            if (filters.department !== 'All Departments') {
-                filteredMockComplaints = filteredMockComplaints.filter(c => c.department === filters.department);
-            }
-
-            const sortedComplaints = filteredMockComplaints.sort((a, b) => {
-                const aCount = a.supporter_count || 1;
-                const bCount = b.supporter_count || 1;
-                if (bCount !== aCount) return bCount - aCount;
-                return new Date(b.created_at) - new Date(a.created_at);
-            });
-
-            setComplaints(sortedComplaints);
+            setError(err.message || 'Failed to fetch complaints');
+            setComplaints([]);
         } finally {
             setLoading(false);
         }
@@ -138,9 +100,8 @@ const AdminDashboard = () => {
             }
         } catch (err) {
             console.error('Failed to fetch duplicates:', err);
-            setDuplicateGroups([
-                { report_count: 3, issue_type: 'Water Leakage', area: 'Southside', city: 'Metropolis', complaint_ids: 'CMP-888, CMP-889, CMP-890', total_supporters: 12, highest_severity: 'high' }
-            ]);
+            setError(err.message || 'Failed to fetch duplicate groups');
+            setDuplicateGroups([]);
         } finally {
             setDuplicatesLoading(false);
         }
@@ -204,7 +165,8 @@ const AdminDashboard = () => {
 
     // Assign complaint to department
     const assignDepartment = async (id, department) => {
-        setUpdating({ ...updating, [id]: true });
+        setError(null);
+        setUpdating(prev => ({ ...prev, [id]: true }));
 
         try {
             const response = await fetch(`${API_BASE}/assign`, {
@@ -219,20 +181,15 @@ const AdminDashboard = () => {
                 throw new Error(data.error?.message || 'Failed to assign department');
             }
 
-            // Update local state
-            setComplaints(complaints.map(c =>
-                c.id === id ? { ...c, department } : c
-            ));
-            setUpdating({ ...updating, [id]: false });
+            // Only reflect the change locally once the backend confirmed it.
+            setComplaints(prev =>
+                prev.map(c => (c.id === id ? { ...c, department } : c))
+            );
         } catch (err) {
             console.error('Assign department error:', err);
-            // MOCK FALLBACK for UI testing without backend
-            setTimeout(() => {
-                setComplaints(complaints.map(c =>
-                    c.id === id ? { ...c, department } : c
-                ));
-                setUpdating({ ...updating, [id]: false });
-            }, 800);
+            setError(err.message || 'Failed to assign department');
+        } finally {
+            setUpdating(prev => ({ ...prev, [id]: false }));
         }
     };
 

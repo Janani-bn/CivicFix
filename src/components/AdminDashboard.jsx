@@ -250,7 +250,7 @@ const AdminDashboard = () => {
     };
 
     const getStatusClass = (status) => {
-        return status.toLowerCase().replace(' ', '-');
+        return String(status || '').toLowerCase().replace(' ', '-');
     };
 
     const toggleExpand = (id) => {
@@ -563,7 +563,7 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <div className="action-group">
-                                                {complaint.status !== 'Resolved' ? (
+                                                {complaint.status !== 'Resolved' && getNextStatus(complaint.status) ? (
                                                     <button
                                                         className={`update-btn ${getNextStatus(complaint.status).toLowerCase().replace(' ', '-')}`}
                                                         onClick={() => updateStatus(complaint.id, getNextStatus(complaint.status))}
@@ -571,12 +571,12 @@ const AdminDashboard = () => {
                                                     >
                                                         {updating[complaint.id] ? 'Updating...' : `Mark as ${getNextStatus(complaint.status)}`}
                                                     </button>
-                                                ) : (
+                                                ) : complaint.status === 'Resolved' ? (
                                                     <span className="resolved-badge">
                                                         <CheckCircle />
                                                         Resolved
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>

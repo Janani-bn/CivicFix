@@ -11,20 +11,23 @@ const addComment = async (req, res, next) => {
     try {
         const { complaintId, message, name } = req.body || {};
 
-        if (!complaintId || !String(complaintId).trim()) {
+        if (typeof complaintId !== 'string' || !complaintId.trim()) {
             return res.status(400).json({ success: false, error: { message: 'complaintId is required' } });
         }
-        if (!message || !String(message).trim()) {
-            return res.status(400).json({ success: false, error: { message: 'message is required' } });
+        if (typeof message !== 'string' || !message.trim()) {
+            return res.status(400).json({ success: false, error: { message: 'message must be a non-empty string' } });
+        }
+        if (name !== undefined && name !== null && typeof name !== 'string') {
+            return res.status(400).json({ success: false, error: { message: 'name must be a string' } });
         }
 
-        const normalizedComplaintId = String(complaintId).trim();
+        const normalizedComplaintId = complaintId.trim();
         const complaint = await Complaint.findByComplaintId(normalizedComplaintId);
         if (!complaint) {
             return res.status(404).json({ success: false, error: { message: 'Complaint not found' } });
         }
 
-        let authorName = (name && String(name).trim()) || null;
+        let authorName = (typeof name === 'string' && name.trim()) || null;
 
         if (!authorName && req.user?.id) {
             const user = await User.findById(req.user.id);
@@ -36,7 +39,7 @@ const addComment = async (req, res, next) => {
         const comment = await Comment.create({
             complaintId: normalizedComplaintId,
             authorName,
-            message: String(message).trim()
+            message: message.trim()
         });
 
         return res.status(201).json({ success: true, data: comment });

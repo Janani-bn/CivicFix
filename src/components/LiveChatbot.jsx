@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send } from 'lucide-react';
+import { isAcceptablePhone } from '../utils/phoneValidation';
 import './LiveChatbot.css';
 
 // ============================================================
@@ -268,6 +269,14 @@ const LiveChatbot = ({ onAutoFill, forceOpen, onForceOpened }) => {
       const parsed = parseMessage(val);
       const merged = { ...formData, ...parsed };
       if (parsed.issueType !== 'Others' || parsed.area) {
+        // A present-but-short number would fail at submit time. Keep the
+        // citizen in conversation and ask for a correction instead.
+        if (!isAcceptablePhone(merged.phone)) {
+          setFormData(merged);
+          setStep('ask_phone');
+          botSay("That phone number looks too short. Please share a valid 10-digit number, or type skip.", 200);
+          return;
+        }
         setFormData(merged);
         setStep('confirm');
         showSummary(merged);
@@ -281,6 +290,13 @@ const LiveChatbot = ({ onAutoFill, forceOpen, onForceOpened }) => {
     }
 
     const skip = val.toLowerCase() === 'skip';
+
+    // A present-but-short number would fail at submit time. Keep the citizen
+    // in conversation instead of auto-filling a value known to fail.
+    if (step === 'ask_phone' && !skip && !isAcceptablePhone(val)) {
+      botSay("That number still looks short. Please check and resend a 10-digit number, or type skip.", 200);
+      return;
+    }
 
     switch (step) {
       case 'ask_description':

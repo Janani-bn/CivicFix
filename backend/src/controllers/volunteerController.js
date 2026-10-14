@@ -34,6 +34,18 @@ const createRequest = async (req, res, next) => {
             data: { request }
         });
     } catch (err) {
+        // Lost a race with a concurrent request for the same user: the
+        // pending uniqueness guard rejected the second insert. Answer the
+        // same 409 as the sequential duplicate path instead of a 500.
+        if (err && /UNIQUE constraint failed/i.test(err.message || '')) {
+            const existingPending = await VolunteerRequest.findPendingByUserId(userId);
+            if (existingPending) {
+                return res.status(409).json({
+                    success: false,
+                    error: { message: 'Volunteer request is already pending' }
+                });
+            }
+        }
         return next(err);
     }
 };

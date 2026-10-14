@@ -20,6 +20,7 @@ const volunteerRoutes = require('./src/routes/volunteers');
 // Import middleware
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
 const { AI_MAX_BODY_SIZE } = require('./src/utils/aiLimits');
+const { JSON_BODY_LIMIT } = require('./src/utils/requestLimits');
 
 // Ensure DB schema exists (idempotent)
 const initDatabase = require('./src/config/initDatabase');
@@ -44,8 +45,8 @@ app.use('/api/ai', express.urlencoded({
 
 app.use('/api/ai', aiRoutes);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ limit: JSON_BODY_LIMIT, extended: true }));
 app.use('/uploads', (req, res, next) => {
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
     const extension = path.extname(req.path).toLowerCase();

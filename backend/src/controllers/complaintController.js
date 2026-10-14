@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { routeToDepartment } = require('../utils/departmentRouter');
 const { generateWhatsAppLink } = require('../utils/whatsapp');
 const { removeUploadedFile } = require('../middleware/uploadMiddleware');
+const { parseStrictInternalId } = require('../utils/complaintId');
 
 /**
  * Create a new complaint
@@ -134,9 +135,10 @@ const getComplaintById = async (req, res, next) => {
         let complaint = await Complaint.findByComplaintId(id);
 
         if (!complaint) {
-            // Try internal id if numeric
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
+            // Only exact numeric IDs resolve; malformed values like
+            // '1garbage' must not fall back to their numeric prefix.
+            const internalId = parseStrictInternalId(id);
+            if (internalId !== null) {
                 complaint = await Complaint.findById(internalId);
             }
         }
@@ -189,8 +191,8 @@ const updateComplaintStatus = async (req, res, next) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const internalId = parseInt(id, 10);
-        if (isNaN(internalId)) {
+        const internalId = parseStrictInternalId(id);
+        if (internalId === null) {
             const error = new Error('Invalid complaint ID');
             error.statusCode = 400;
             throw error;
@@ -225,8 +227,8 @@ const assignComplaint = async (req, res, next) => {
         let complaint = await Complaint.findByComplaintId(complaintId);
 
         if (!complaint) {
-            const internalId = parseInt(complaintId, 10);
-            if (!isNaN(internalId)) {
+            const internalId = parseStrictInternalId(complaintId);
+            if (internalId !== null) {
                 complaint = await Complaint.findById(internalId);
             }
         }
@@ -273,9 +275,9 @@ const assignComplaint = async (req, res, next) => {
 const joinComplaint = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const internalId = parseInt(id, 10);
+        const internalId = parseStrictInternalId(id);
         
-        if (isNaN(internalId)) {
+        if (internalId === null) {
             const error = new Error('Invalid complaint ID');
             error.statusCode = 400;
             throw error;
@@ -329,8 +331,8 @@ const claimComplaint = async (req, res, next) => {
 
         let complaint = await Complaint.findByComplaintId(id);
         if (!complaint) {
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
+            const internalId = parseStrictInternalId(id);
+            if (internalId !== null) {
                 complaint = await Complaint.findById(internalId);
             }
         }
@@ -396,8 +398,8 @@ const resolveComplaint = async (req, res, next) => {
 
         let complaint = await Complaint.findByComplaintId(id);
         if (!complaint) {
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
+            const internalId = parseStrictInternalId(id);
+            if (internalId !== null) {
                 complaint = await Complaint.findById(internalId);
             }
         }

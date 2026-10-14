@@ -51,6 +51,12 @@ const signup = async (req, res, next) => {
         if (typeof password !== 'string' || password.length < 6) {
             return res.status(400).json({ success: false, error: { message: 'Password must be at least 6 characters' } });
         }
+        // bcrypt only honors the first 72 bytes. Longer input would be
+        // silently truncated, so reject it instead of storing a weaker
+        // secret than the user believes they chose.
+        if (Buffer.byteLength(password, 'utf8') > 72) {
+            return res.status(400).json({ success: false, error: { message: 'Password must not exceed 72 bytes' } });
+        }
 
         const existing = await User.findByEmail(email.trim().toLowerCase());
         if (existing) {
@@ -83,6 +89,11 @@ const login = async (req, res, next) => {
         const { email, password } = req.body || {};
 
         if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
+            return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
+        }
+        // Same 72-byte ceiling as signup: overlong input would verify
+        // through bcrypt truncation against a shorter stored secret.
+        if (Buffer.byteLength(password, 'utf8') > 72) {
             return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
         }
 

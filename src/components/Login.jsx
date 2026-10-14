@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { destinationForRole } from '../utils/roleNavigation';
 import './AuthPages.css';
 
 const Login = () => {
@@ -21,11 +22,12 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     try {
-      await login({ ...formData, role });
-      localStorage.setItem('userRole', role);
-      if (role === 'volunteer') navigate('/volunteer');
-      else if (role === 'admin') navigate('/admin');
-      else navigate('/feed');
+      const loggedInUser = await login({ ...formData, role });
+      // The server decides the role. Navigate and persist from the verified
+      // account, not from the tab the user happened to press.
+      const actualRole = loggedInUser?.role || 'citizen';
+      localStorage.setItem('userRole', actualRole);
+      navigate(destinationForRole(actualRole));
     } catch (err) {
       setError(err.message || 'Login failed.');
     } finally {

@@ -98,16 +98,18 @@ const getNearbyComplaints = async (req, res, next) => {
         const lng = Number(req.query.lng);
         const radiusKm = req.query.radiusKm ? Number(req.query.radiusKm) : 10;
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        const { isValidLatitude, isValidLongitude, isValidRadiusKm } = require('../utils/locationValidation');
+
+        if (!isValidLatitude(lat) || !isValidLongitude(lng)) {
             return res.status(400).json({
                 success: false,
-                error: { message: 'lat and lng are required' }
+                error: { message: 'lat must be between -90 and 90 and lng between -180 and 180' }
             });
         }
-        if (Number.isNaN(radiusKm) || radiusKm <= 0) {
+        if (!isValidRadiusKm(radiusKm)) {
             return res.status(400).json({
                 success: false,
-                error: { message: 'radiusKm must be a positive number' }
+                error: { message: 'radiusKm must be a positive number up to 100' }
             });
         }
 

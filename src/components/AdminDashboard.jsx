@@ -20,6 +20,11 @@ import {
 } from 'lucide-react';
 import './AdminDashboard.css';
 import { API_BASE } from '../services/api';
+import {
+    fetchAdminComplaints,
+    fetchAdminDuplicates,
+    requestAssignDepartment
+} from '../utils/adminDashboardLogic';
 
 const DEPARTMENTS = [
     'All Departments',
@@ -50,6 +55,7 @@ const AdminDashboard = () => {
     const [activeAdminTab, setActiveAdminTab] = useState('complaints');
     const [duplicateGroups, setDuplicateGroups] = useState([]);
     const [duplicatesLoading, setDuplicatesLoading] = useState(false);
+    const [duplicatesError, setDuplicatesError] = useState(null);
 
     // Fetch complaints
     const fetchComplaints = useCallback(async () => {
@@ -57,72 +63,17 @@ const AdminDashboard = () => {
         setError(null);
 
         try {
-            const params = new URLSearchParams();
-            if (filters.status !== 'All Statuses') {
-                params.append('status', filters.status);
-            }
-            if (filters.department !== 'All Departments') {
-                params.append('department', filters.department);
-            }
-
-            const response = await fetch(`${API_BASE}/complaints?${params}`);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to fetch complaints');
-            }
-
-            // Sort by supporter count (High Demand first) and then by date
-            const sortedComplaints = data.data.sort((a, b) => {
-                const aCount = a.supporter_count || 1;
-                const bCount = b.supporter_count || 1;
-                if (bCount !== aCount) return bCount - aCount;
-                return new Date(b.created_at) - new Date(a.created_at);
-            });
-
-            setComplaints(sortedComplaints);
+            setComplaints(
+                await fetchAdminComplaints({
+                    apiBase: API_BASE,
+                    status: filters.status,
+                    department: filters.department
+                })
+            );
         } catch (err) {
             console.error('Fetch complaints error:', err);
-            // MOCK FALLBACK for UI testing without backend
-            const localIssues = JSON.parse(localStorage.getItem('civicfix_issues') || '[]');
-            const formattedLocalIssues = localIssues.map(issue => ({
-                id: issue.id || Math.random(),
-                complaint_id: issue.complaint_id || issue.id || `CMP-${Math.floor(Math.random() * 8000)}`,
-                issue_type: issue.issueType || issue.title,
-                area: issue.area,
-                city: issue.city,
-                status: issue.status || 'Pending',
-                supporter_count: issue.supporter_count || 1,
-                department: issue.department || 'General Administration',
-                name: 'Guest Citizen',
-                phone: 'N/A',
-                description: issue.description,
-                created_at: issue.submittedAt || issue.created_at || new Date().toISOString()
-            }));
-
-            const allMockComplaints = [
-                ...formattedLocalIssues,
-                { id: '1', complaint_id: 'CMP-1234', issue_type: 'Pothole', area: 'Downtown', city: 'Metropolis', status: 'Pending', supporter_count: 5, department: 'Roads Department', name: 'John Doe', phone: '1234567890', description: 'Large pothole on main street.', created_at: new Date(Date.now() - 40000).toISOString() },
-                { id: '2', complaint_id: 'CMP-5678', issue_type: 'Garbage overflow', area: 'Northside', city: 'Metropolis', status: 'In Progress', supporter_count: 1, department: 'Sanitation', name: 'Jane Smith', phone: '0987654321', description: 'Trash not picked up for days.', created_at: new Date(Date.now() - 90000).toISOString() },
-                { id: 'mock1', complaint_id: 'mock1', issue_type: 'Broken Streetlight', area: 'East End', city: 'Metropolis', status: 'Resolved', supporter_count: 2, department: 'Electrical Department', name: 'Bob Johnson', phone: '5551234567', description: 'Streetlight is out.', created_at: new Date(Date.now() - 190000).toISOString() },
-            ];
-
-            let filteredMockComplaints = allMockComplaints;
-            if (filters.status !== 'All Statuses') {
-                filteredMockComplaints = filteredMockComplaints.filter(c => c.status === filters.status);
-            }
-            if (filters.department !== 'All Departments') {
-                filteredMockComplaints = filteredMockComplaints.filter(c => c.department === filters.department);
-            }
-
-            const sortedComplaints = filteredMockComplaints.sort((a, b) => {
-                const aCount = a.supporter_count || 1;
-                const bCount = b.supporter_count || 1;
-                if (bCount !== aCount) return bCount - aCount;
-                return new Date(b.created_at) - new Date(a.created_at);
-            });
-
-            setComplaints(sortedComplaints);
+            setError(err.message || 'Failed to fetch complaints');
+            setComplaints([]);
         } finally {
             setLoading(false);
         }
@@ -130,17 +81,13 @@ const AdminDashboard = () => {
 
     const fetchDuplicates = useCallback(async () => {
         setDuplicatesLoading(true);
+        setDuplicatesError(null);
         try {
-            const response = await fetch(`${API_BASE}/complaints/grouped-duplicates`);
-            const data = await response.json();
-            if (response.ok) {
-                setDuplicateGroups(data.data || []);
-            }
+            setDuplicateGroups(await fetchAdminDuplicates({ apiBase: API_BASE }));
         } catch (err) {
             console.error('Failed to fetch duplicates:', err);
-            setDuplicateGroups([
-                { report_count: 3, issue_type: 'Water Leakage', area: 'Southside', city: 'Metropolis', complaint_ids: 'CMP-888, CMP-889, CMP-890', total_supporters: 12, highest_severity: 'high' }
-            ]);
+            setDuplicatesError(err.message || 'Failed to fetch duplicate groups');
+            setDuplicateGroups([]);
         } finally {
             setDuplicatesLoading(false);
         }
@@ -204,35 +151,21 @@ const AdminDashboard = () => {
 
     // Assign complaint to department
     const assignDepartment = async (id, department) => {
-        setUpdating({ ...updating, [id]: true });
+        setError(null);
+        setUpdating(prev => ({ ...prev, [id]: true }));
 
         try {
-            const response = await fetch(`${API_BASE}/assign`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ complaintId: id.toString(), department })
-            });
+            await requestAssignDepartment({ apiBase: API_BASE, complaintId: id, department });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to assign department');
-            }
-
-            // Update local state
-            setComplaints(complaints.map(c =>
-                c.id === id ? { ...c, department } : c
-            ));
-            setUpdating({ ...updating, [id]: false });
+            // Only reflect the change locally once the backend confirmed it.
+            setComplaints(prev =>
+                prev.map(c => (c.id === id ? { ...c, department } : c))
+            );
         } catch (err) {
             console.error('Assign department error:', err);
-            // MOCK FALLBACK for UI testing without backend
-            setTimeout(() => {
-                setComplaints(complaints.map(c =>
-                    c.id === id ? { ...c, department } : c
-                ));
-                setUpdating({ ...updating, [id]: false });
-            }, 800);
+            setError(err.message || 'Failed to assign department');
+        } finally {
+            setUpdating(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -385,6 +318,11 @@ const AdminDashboard = () => {
                             <div className="loading-state">
                                 <RefreshCw className="loading-icon spinning" />
                                 <p>Loading duplicate groups...</p>
+                            </div>
+                        ) : duplicatesError ? (
+                            <div className="dashboard-error">
+                                <AlertCircle className="error-icon" />
+                                <p>{duplicatesError}</p>
                             </div>
                         ) : duplicateGroups.length === 0 ? (
                             <div className="dup-empty">

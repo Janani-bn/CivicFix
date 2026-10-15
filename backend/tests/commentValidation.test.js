@@ -7,12 +7,16 @@ process.env.JWT_SECRET = 'x'.repeat(48);
 const complaintRoutes = require('../src/routes/complaints');
 const commentRoutes = require('../src/routes/comments');
 const { errorHandler } = require('../src/middleware/errorHandler');
+const initDatabase = require('../src/config/initDatabase');
 
 let server;
 let baseUrl;
 let complaintId;
 
 before(async () => {
+    // Fresh checkouts have no tables yet; create the schema first so the
+    // suite passes without a pre-existing database file.
+    await initDatabase();
     const app = express();
     app.use(express.json({ limit: '50mb' }));
     app.use('/api/complaints', complaintRoutes);

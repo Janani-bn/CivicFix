@@ -21,23 +21,27 @@ const SignUp = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setIsLoading(true);
 
-    try {
-      await signup(formData);
-      localStorage.setItem('userRole', formData.role);
-      if (formData.role === 'volunteer') navigate('/volunteer');
-      else if (formData.role === 'admin') navigate('/admin');
-      else navigate('/feed');
-    } catch (err) {
-      setError(err.message || 'An error occurred during signup.');
-    } finally {
-      setIsLoading(false);
+  try {
+    const signedUpUser = await signup(formData);
+
+    localStorage.setItem('userRole', signedUpUser.role);
+
+    if (signedUpUser.role === 'admin') {
+      navigate('/admin');
+    } else {
+      navigate('/feed');
     }
-  };
+  } catch (err) {
+    setError(err.message || 'An error occurred during signup.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="auth-page">

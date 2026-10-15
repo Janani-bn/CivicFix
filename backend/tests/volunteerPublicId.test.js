@@ -1,8 +1,15 @@
-const { test, describe } = require('node:test');
+const { test, describe, before } = require('node:test');
 const assert = require('node:assert');
 const Complaint = require('../src/models/Complaint');
+const initDatabase = require('../src/config/initDatabase');
 
 describe('Volunteer model public ID lookup', () => {
+    // Fresh checkouts have no tables yet; create the schema first so the
+    // suite passes without a pre-existing database file.
+    before(async () => {
+        await initDatabase();
+    });
+
     test('claim accepts a CIV- public ID directly', async () => {
         const created = await Complaint.create({
             name: 'Public ID Claim',

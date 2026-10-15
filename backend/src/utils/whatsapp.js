@@ -9,6 +9,10 @@ const generateWhatsAppLink = (phone, details) => {
 
     // Remove any non-numeric characters and ensure '91' prefix
     let cleanPhone = phone.replace(/\D/g, '');
+
+    // No valid E.164 number exceeds 15 digits. Anything longer is not a
+    // real recipient, so decline the link instead of pointing at one.
+    if (cleanPhone.length > 15) return null;
     
     if (cleanPhone.length === 10) {
     cleanPhone = '91' + cleanPhone;

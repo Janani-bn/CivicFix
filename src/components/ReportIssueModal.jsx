@@ -3,6 +3,7 @@ import { X, Upload, CheckCircle, MapPin, Users } from 'lucide-react';
 import './ReportIssueModal.css';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../services/api';
+import { resolveReportPosition, postComplaintReport } from '../utils/reportLocation';
 
 const geocodeAddress = async (area, city) => {
   const query = `${area}, ${city}`;
@@ -231,20 +232,14 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     setSubmitting(true);
     setError(null);
 
-    let position = null;
-    try {
-      if (formData.area || formData.city) {
-        position = await geocodeAddress(formData.area, formData.city);
-      }
-      if (!position && formData.mapsLink) {
-        const match = formData.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (match) position = [parseFloat(match[1]), parseFloat(match[2])];
-      }
-    } catch (err) {
-      setError(err.message);
-      setSubmitting(false);
-      return;
-    }
+    let position = await resolveReportPosition(
+      {
+        area: formData.area,
+        city: formData.city,
+        mapsLink: formData.mapsLink
+      },
+      geocodeAddress
+    );
 
     if (!position) {
       setError('Could not detect location. Please enter a valid Area/City or Google Maps link.');
@@ -252,43 +247,18 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
       return;
     }
 
-    const formDataToSend = new FormData();
-    formDataToSend.append('name', formData.fullName);
-    formDataToSend.append('phone', formData.phone);
-    formDataToSend.append('email', formData.email);
-    formDataToSend.append('area', formData.area);
-    formDataToSend.append('city', formData.city);
-    formDataToSend.append('landmark', formData.landmark);
-    formDataToSend.append('issueType', formData.issueType);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('severity', formData.severity);
-    formDataToSend.append('duration', formData.duration);
-    formDataToSend.append('allowVolunteers', formData.volunteer);
-    formDataToSend.append('wantUpdates', formData.updates);
-    formDataToSend.append('latitude', position[0]);
-    formDataToSend.append('longitude', position[1]);
-
-    if (selectedFile) {
-      formDataToSend.append('image', selectedFile);
-    }
-
     try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const response = await fetch(`${API_BASE}/complaints`, {
-        method: 'POST',
-        headers,
-        body: formDataToSend,
+      const result = await postComplaintReport({
+        apiBase: API_BASE,
+        form: formData,
+        position,
+        imageFile: selectedFile,
+        token
       });
 
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error?.message || 'The server rejected your submission.');
-      }
-
-      setIssueId(responseData.data.complaintId);
-      if (responseData.data.whatsappLink) {
-        setWhatsappLink(responseData.data.whatsappLink);
+      setIssueId(result.complaintId);
+      if (result.whatsappLink) {
+        setWhatsappLink(result.whatsappLink);
       }
 
       window.dispatchEvent(new Event('civicfix:complaint-created'));

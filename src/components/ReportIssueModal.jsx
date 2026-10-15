@@ -3,6 +3,7 @@ import { X, Upload, CheckCircle, MapPin, Users } from 'lucide-react';
 import './ReportIssueModal.css';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../services/api';
+import { resolveReportPosition } from '../utils/reportLocation';
 
 const geocodeAddress = async (area, city) => {
   const query = `${area}, ${city}`;
@@ -231,22 +232,14 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     setSubmitting(true);
     setError(null);
 
-    let position = null;
-
-    // A pasted Maps link carries exact coordinates, so try it first and do
-    // not let an address lookup failure block it.
-    if (formData.mapsLink) {
-      const match = formData.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) position = [parseFloat(match[1]), parseFloat(match[2])];
-    }
-
-    if (!position && (formData.area || formData.city)) {
-      try {
-        position = await geocodeAddress(formData.area, formData.city);
-      } catch (err) {
-        console.error('Geocoding failed, falling back to Maps link:', err);
-      }
-    }
+    let position = await resolveReportPosition(
+      {
+        area: formData.area,
+        city: formData.city,
+        mapsLink: formData.mapsLink
+      },
+      geocodeAddress
+    );
 
     if (!position) {
       setError('Could not detect location. Please enter a valid Area/City or Google Maps link.');

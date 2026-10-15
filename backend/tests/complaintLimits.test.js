@@ -7,6 +7,7 @@ process.env.JWT_SECRET = 'x'.repeat(48);
 const complaintRoutes = require('../src/routes/complaints');
 const { errorHandler } = require('../src/middleware/errorHandler');
 const { COMPLAINT_FIELD_LIMITS } = require('../src/utils/complaintLimits');
+const initDatabase = require('../src/config/initDatabase');
 
 const createApp = () => {
     const app = express();
@@ -30,6 +31,7 @@ describe('Complaint field length limits', () => {
     let baseUrl;
 
     before(async () => {
+        await initDatabase();
         const app = createApp();
         await new Promise((resolve) => {
             server = app.listen(0, () => {

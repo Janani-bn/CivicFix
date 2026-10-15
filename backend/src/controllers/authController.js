@@ -173,8 +173,10 @@ const updateLocation = async (req, res, next) => {
         const lat = Number(latitude);
         const lng = Number(longitude);
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return res.status(400).json({ success: false, error: { message: 'latitude and longitude are required' } });
+        const { isValidLatitude, isValidLongitude } = require('../utils/locationValidation');
+
+        if (!isValidLatitude(lat) || !isValidLongitude(lng)) {
+            return res.status(400).json({ success: false, error: { message: 'latitude must be between -90 and 90 and longitude between -180 and 180' } });
         }
 
         const user = await User.updateLocation(req.user.id, {

@@ -48,7 +48,12 @@ router.get('/joined', authenticate, getJoinedComplaints);
 router.get('/nearby', getNearbyComplaints);
 
 // Admin: GET /complaints/grouped-duplicates - complaints grouped by area+type (count >= 2)
-router.get('/grouped-duplicates', getGroupedDuplicates);
+router.get(
+    '/grouped-duplicates',
+    authenticate,
+    authorizeAdmin,
+    getGroupedDuplicates
+);
 
 // Volunteer: POST /complaints/:id/claim - Claim complaint
 router.post('/:id/claim', authenticate, requireVolunteer, claimComplaint);

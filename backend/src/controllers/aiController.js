@@ -98,14 +98,11 @@ const chatWithAI = async (req, res, next) => {
 
         res.json({ success: true, data: result });
     } catch (err) {
-        console.error('[AI Chat Error]', err.message);
+        console.error('[AI Chat Error]', err);
 
-        res.json({
-            success: true,
-            data: {
-                reply: "I'm currently running in limited mode due to high demand. I can still help you report issues or track complaints!",
-                fallback: true
-            }
+        return res.status(502).json({
+            success: false,
+            error: { message: 'AI service is temporarily unavailable. Please try again later.' }
         });
     }
 };

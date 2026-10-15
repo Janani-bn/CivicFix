@@ -6,11 +6,13 @@ process.env.JWT_SECRET = 'x'.repeat(48);
 
 const authRoutes = require('../src/routes/auth');
 const { errorHandler } = require('../src/middleware/errorHandler');
+const initDatabase = require('../src/config/initDatabase');
 
 let server;
 let baseUrl;
 
 before(async () => {
+    await initDatabase();
     const app = express();
     app.use(express.json());
     app.use('/api/auth', authRoutes);

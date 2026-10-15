@@ -52,6 +52,25 @@ export const cleanLegacyFixtures = (storage) => {
 };
 
 /**
+ * Pick the first genuinely present coordinate. Zero is a valid coordinate
+ * and must not fall through the way || would let it.
+ */
+const pickCoord = (primary, fallback) =>
+    primary !== null && primary !== undefined && primary !== ''
+        ? primary
+        : fallback;
+
+/**
+ * True when a normalized coordinate is actually present. Numeric zero
+ * counts as present; only missing or NaN values are absent.
+ */
+const hasCoord = (value) => {
+    if (value === null || value === undefined || value === '') return false;
+    if (typeof value === 'number' && Number.isNaN(value)) return false;
+    return true;
+};
+
+/**
  * Merge and normalize legitimate reports from API and local storage.
  * Only exact legacy dummy fixtures are excluded.
  */
@@ -78,15 +97,15 @@ export const processReports = (apiReports = [], localReports = []) => {
     return merged
         .map((r) => ({
             ...r,
-            lat: r.latitude || r.lat,
-            lng: r.longitude || r.lng,
+            lat: pickCoord(r.latitude, r.lat),
+            lng: pickCoord(r.longitude, r.lng),
             issueType: r.issue_type || r.issueType || "Unknown",
             place: r.area ? `${r.area}, ${r.city}` : (r.place || "Unknown"),
             severity: r.severity || "Low",
             status: r.status || "Pending",
             date: r.created_at ? new Date(r.created_at).toLocaleDateString() : (r.date || "Today"),
         }))
-        .filter((r) => r.lat && r.lng);
+        .filter((r) => hasCoord(r.lat) && hasCoord(r.lng));
 };
 
 /**

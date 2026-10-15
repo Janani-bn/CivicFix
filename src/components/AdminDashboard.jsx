@@ -20,6 +20,11 @@ import {
 } from 'lucide-react';
 import './AdminDashboard.css';
 import { API_BASE } from '../services/api';
+import {
+    fetchAdminComplaints,
+    fetchAdminDuplicates,
+    requestAssignDepartment
+} from '../utils/adminDashboardLogic';
 
 const DEPARTMENTS = [
     'All Departments',
@@ -50,6 +55,7 @@ const AdminDashboard = () => {
     const [activeAdminTab, setActiveAdminTab] = useState('complaints');
     const [duplicateGroups, setDuplicateGroups] = useState([]);
     const [duplicatesLoading, setDuplicatesLoading] = useState(false);
+    const [duplicatesError, setDuplicatesError] = useState(null);
 
     // Fetch complaints
     const fetchComplaints = useCallback(async () => {
@@ -57,30 +63,13 @@ const AdminDashboard = () => {
         setError(null);
 
         try {
-            const params = new URLSearchParams();
-            if (filters.status !== 'All Statuses') {
-                params.append('status', filters.status);
-            }
-            if (filters.department !== 'All Departments') {
-                params.append('department', filters.department);
-            }
-
-            const response = await fetch(`${API_BASE}/complaints?${params}`);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to fetch complaints');
-            }
-
-            // Sort by supporter count (High Demand first) and then by date
-            const sortedComplaints = data.data.sort((a, b) => {
-                const aCount = a.supporter_count || 1;
-                const bCount = b.supporter_count || 1;
-                if (bCount !== aCount) return bCount - aCount;
-                return new Date(b.created_at) - new Date(a.created_at);
-            });
-
-            setComplaints(sortedComplaints);
+            setComplaints(
+                await fetchAdminComplaints({
+                    apiBase: API_BASE,
+                    status: filters.status,
+                    department: filters.department
+                })
+            );
         } catch (err) {
             console.error('Fetch complaints error:', err);
             setError(err.message || 'Failed to fetch complaints');
@@ -92,15 +81,12 @@ const AdminDashboard = () => {
 
     const fetchDuplicates = useCallback(async () => {
         setDuplicatesLoading(true);
+        setDuplicatesError(null);
         try {
-            const response = await fetch(`${API_BASE}/complaints/grouped-duplicates`);
-            const data = await response.json();
-            if (response.ok) {
-                setDuplicateGroups(data.data || []);
-            }
+            setDuplicateGroups(await fetchAdminDuplicates({ apiBase: API_BASE }));
         } catch (err) {
             console.error('Failed to fetch duplicates:', err);
-            setError(err.message || 'Failed to fetch duplicate groups');
+            setDuplicatesError(err.message || 'Failed to fetch duplicate groups');
             setDuplicateGroups([]);
         } finally {
             setDuplicatesLoading(false);
@@ -169,17 +155,7 @@ const AdminDashboard = () => {
         setUpdating(prev => ({ ...prev, [id]: true }));
 
         try {
-            const response = await fetch(`${API_BASE}/assign`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ complaintId: id.toString(), department })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to assign department');
-            }
+            await requestAssignDepartment({ apiBase: API_BASE, complaintId: id, department });
 
             // Only reflect the change locally once the backend confirmed it.
             setComplaints(prev =>
@@ -342,6 +318,11 @@ const AdminDashboard = () => {
                             <div className="loading-state">
                                 <RefreshCw className="loading-icon spinning" />
                                 <p>Loading duplicate groups...</p>
+                            </div>
+                        ) : duplicatesError ? (
+                            <div className="dashboard-error">
+                                <AlertCircle className="error-icon" />
+                                <p>{duplicatesError}</p>
                             </div>
                         ) : duplicateGroups.length === 0 ? (
                             <div className="dup-empty">

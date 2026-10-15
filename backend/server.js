@@ -37,15 +37,18 @@ app.use(cors());
 // Apply a smaller body-size limit specifically to AI endpoints
 app.use('/api/ai', express.json({ limit: AI_MAX_BODY_SIZE }));
 
+// Every controller reads only flat top-level fields, so the simple parser
+// is enough. It leaves bracket shapes as inert flat keys instead of
+// building nested objects out of request input.
 app.use('/api/ai', express.urlencoded({
     limit: AI_MAX_BODY_SIZE,
-    extended: true
+    extended: false
 }));
 
 app.use('/api/ai', aiRoutes);
 
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.urlencoded({ limit: '50mb', extended: false }));
 app.use('/uploads', (req, res, next) => {
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
     const extension = path.extname(req.path).toLowerCase();

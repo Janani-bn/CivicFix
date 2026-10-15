@@ -37,7 +37,14 @@ const createRateLimiter = ({ windowMs, max, message = DEFAULT_MESSAGE }) => {
     };
 
     const middleware = (req, res, next) => {
-        const key = `${req.method}:${req.baseUrl}${req.path}:${req.ip}`;
+        // Express matches routes case-insensitively and ignores trailing
+        // slashes, so /login, /LOGIN and /login/ reach the same handler.
+        // Bucket on the canonical spelling or each variant gets its own
+        // counter and the limit is trivially bypassed.
+        const route = `${req.baseUrl}${req.path}`
+            .toLowerCase()
+            .replace(/\/+$/, '') || '/';
+        const key = `${req.method}:${route}:${req.ip}`;
 
         if (!check(key)) {
             return res.status(429).json({

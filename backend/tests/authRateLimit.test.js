@@ -9,6 +9,7 @@ process.env.AUTH_RATE_LIMIT_WINDOW_MS = '60000';
 
 const authRoutes = require('../src/routes/auth');
 const { errorHandler } = require('../src/middleware/errorHandler');
+const initDatabase = require('../src/config/initDatabase');
 
 const createApp = () => {
     const app = express();
@@ -23,6 +24,9 @@ describe('Auth rate limiting', () => {
     let baseUrl;
 
     before(async () => {
+        // Fresh checkouts have no tables yet; without this the login
+        // attempts fail with 500 instead of reaching the limiter.
+        await initDatabase();
         const app = createApp();
         await new Promise((resolve) => {
             server = app.listen(0, () => {
@@ -73,5 +77,40 @@ describe('Auth rate limiting', () => {
 
         // Still reaches validation, so the login bucket did not apply here.
         assert.strictEqual(res.status, 400);
+    });
+
+    test('case and trailing-slash spellings share one login bucket', async () => {
+        // Reload the routes for a fresh limiter so earlier tests cannot
+        // leak counts into this one.
+        delete require.cache[require.resolve('../src/routes/auth')];
+        const freshRoutes = require('../src/routes/auth');
+        const freshApp = express();
+        freshApp.use(express.json());
+        freshApp.use('/api/auth', freshRoutes);
+        freshApp.use(errorHandler);
+        const freshServer = await new Promise((resolve) => {
+            const s = freshApp.listen(0, () => resolve(s));
+        });
+        const freshBase = `http://127.0.0.1:${freshServer.address().port}/api/auth`;
+
+        try {
+            const attempt = (path) =>
+                fetch(`${freshBase}${path}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'alias@example.com', password: 'wrong-password' })
+                });
+
+            // Three attempts across three spellings of the same route.
+            assert.strictEqual((await attempt('/login')).status, 401);
+            assert.strictEqual((await attempt('/LOGIN')).status, 401);
+            assert.strictEqual((await attempt('/login/')).status, 401);
+
+            // A fourth attempt on any spelling is throttled only when the
+            // three spellings counted against one shared bucket.
+            assert.strictEqual((await attempt('/login')).status, 429);
+        } finally {
+            await new Promise((resolve) => freshServer.close(resolve));
+        }
     });
 });

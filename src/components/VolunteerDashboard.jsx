@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE } from "../services/api";
+import { isMyCaseForUser } from "../utils/volunteerOwnership";
 import "./VolunteerDashboard.css";
 
 const HIGH_CASE_VOLUNTEER_THRESHOLD = 10;
@@ -126,12 +127,7 @@ const VolunteerDashboard = () => {
         }
     };
 
-    const isMyCase = (r) => {
-        if (r.status !== "In Progress") return false;
-        if (user?.id && r.claimed_by_user_id === user.id) return true;
-        if (user?.name && (r.claimed_by === user.name || r.claimedBy === user.name)) return true;
-        return false;
-    };
+    const isMyCase = (r) => isMyCaseForUser(r, user);
 
     const myCases = reports.filter(isMyCase);
     const availableCases = reports.filter(

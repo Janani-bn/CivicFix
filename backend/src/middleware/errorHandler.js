@@ -4,9 +4,14 @@
 const errorHandler = (err, req, res, next) => {
     console.error('Error:', err);
 
-    // Default error response
+    // Default error response. Deliberate 4xx errors carry client-authored
+    // messages and pass through; anything else (crashes, driver/DB errors)
+    // must NOT echo err.message outward — schema/driver internals are free
+    // reconnaissance for an attacker. The full error is logged above.
     const statusCode = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
+    const message = statusCode >= 500
+        ? 'Internal Server Error'
+        : (err.message || 'Internal Server Error');
 
     res.status(statusCode).json({
         success: false,

@@ -14,8 +14,11 @@ const addComment = async (req, res, next) => {
         if (!complaintId || !String(complaintId).trim()) {
             return res.status(400).json({ success: false, error: { message: 'complaintId is required' } });
         }
-        if (!message || !String(message).trim()) {
-            return res.status(400).json({ success: false, error: { message: 'message is required' } });
+        if (typeof message !== 'string' || !message.trim()) {
+            return res.status(400).json({ success: false, error: { message: 'message must be a non-empty string' } });
+        }
+        if (name !== undefined && name !== null && typeof name !== 'string') {
+            return res.status(400).json({ success: false, error: { message: 'name must be a string' } });
         }
 
         const normalizedComplaintId = String(complaintId).trim();
@@ -24,7 +27,7 @@ const addComment = async (req, res, next) => {
             return res.status(404).json({ success: false, error: { message: 'Complaint not found' } });
         }
 
-        let authorName = (name && String(name).trim()) || null;
+        let authorName = (name && name.trim()) || null;
 
         if (!authorName && req.user?.id) {
             const user = await User.findById(req.user.id);
@@ -36,7 +39,7 @@ const addComment = async (req, res, next) => {
         const comment = await Comment.create({
             complaintId: normalizedComplaintId,
             authorName,
-            message: String(message).trim()
+            message: message.trim()
         });
 
         return res.status(201).json({ success: true, data: comment });

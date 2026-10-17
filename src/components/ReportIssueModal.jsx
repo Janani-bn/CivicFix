@@ -131,23 +131,13 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
         setLocationName(data.data[0].area || 'your area');
         setView('recommendation');
       } else {
-        // Mock data to ensure Duplicate Check is shown for testing
-        setNearbyIssues([
-          { id: 'mock1', issue_type: 'Pothole', area: 'Downtown', supporter_count: 5 },
-          { id: 'mock2', issue_type: 'Broken Streetlight', area: 'Main Street', supporter_count: 2 },
-        ]);
-        setLocationName('your area');
-        setView('recommendation');
+        setNearbyIssues([]);
+        setView('form');
       }
     } catch (err) {
       console.error('Nearby fetch error:', err);
-      // Fallback
-      setNearbyIssues([
-        { id: 'mock1', issue_type: 'Pothole', area: 'Downtown', supporter_count: 5 },
-        { id: 'mock2', issue_type: 'Water Leakage', area: 'Central Ave', supporter_count: 12 },
-      ]);
-      setLocationName('your area');
-      setView('recommendation');
+      setNearbyIssues([]);
+      setView('form');
     }
   };
 
@@ -165,21 +155,15 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
           setView('recommendation');
           setLocationError(false);
         } else {
-          setNearbyIssues([
-            { id: 'mock3', issue_type: 'Garbage overflow', area: area, supporter_count: 8 }
-          ]);
-          setLocationName(area);
-          setView('recommendation');
+          setNearbyIssues([]);
+          setView('form');
           setLocationError(false);
         }
       }
     } catch (err) {
       console.error('Search failed:', err);
-      setNearbyIssues([
-        { id: 'mock3', issue_type: 'Garbage overflow', area: area, supporter_count: 8 }
-      ]);
-      setLocationName(area);
-      setView('recommendation');
+      setNearbyIssues([]);
+      setView('form');
       setLocationError(false);
     } finally {
       setSubmitting(false);

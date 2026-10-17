@@ -285,9 +285,16 @@ const joinComplaint = async (req, res, next) => {
         const userId = req.user?.id || null;
         const sessionId = req.headers['x-session-id'] || null;
 
-        const complaint = await Complaint.join(internalId, userId, sessionId);
+        const result = await Complaint.join(internalId, userId, sessionId);
 
-        if (!complaint) {
+        if (result && result.alreadyJoined) {
+            return res.status(409).json({
+                success: false,
+                error: { message: 'You have already joined this complaint' }
+            });
+        }
+
+        if (!result) {
             const error = new Error('Complaint not found');
             error.statusCode = 404;
             throw error;
@@ -295,7 +302,7 @@ const joinComplaint = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: complaint
+            data: result
         });
     } catch (err) {
         next(err);

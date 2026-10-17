@@ -216,6 +216,18 @@ class Complaint {
      * @returns {Object} Updated complaint
      */
     static async join(id, userId = null, sessionId = null) {
+        const identifier = userId || sessionId;
+        if (identifier) {
+            const col = userId ? 'user_id' : 'session_id';
+            const existing = await pool.query(
+                `SELECT id FROM complaint_joins WHERE complaint_id = $1 AND ${col} = $2 LIMIT 1`,
+                [id, identifier]
+            );
+            if (existing.rows.length > 0) {
+                return { alreadyJoined: true };
+            }
+        }
+
         const query = `
             UPDATE complaints
             SET supporter_count = supporter_count + 1, updated_at = CURRENT_TIMESTAMP
@@ -226,7 +238,6 @@ class Complaint {
         const complaint = result.rows[0] || null;
 
         if (complaint) {
-            // Record who joined so it appears in My Complaints
             await pool.query(
                 `INSERT INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)`,
                 [id, userId, sessionId]

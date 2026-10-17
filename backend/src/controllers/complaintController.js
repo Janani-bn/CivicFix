@@ -130,15 +130,15 @@ const getComplaintById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // Try to find by complaint_id first, then by internal id
         let complaint = await Complaint.findByComplaintId(id);
 
         if (!complaint) {
-            // Try internal id if numeric
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
-                complaint = await Complaint.findById(internalId);
+            if (!/^\d+$/.test(id)) {
+                const error = new Error('Invalid complaint ID');
+                error.statusCode = 400;
+                throw error;
             }
+            complaint = await Complaint.findById(Number(id));
         }
 
         if (!complaint) {
@@ -189,14 +189,13 @@ const updateComplaintStatus = async (req, res, next) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const internalId = parseInt(id, 10);
-        if (isNaN(internalId)) {
+        if (!/^\d+$/.test(id)) {
             const error = new Error('Invalid complaint ID');
             error.statusCode = 400;
             throw error;
         }
 
-        const complaint = await Complaint.updateStatus(internalId, status);
+        const complaint = await Complaint.updateStatus(Number(id), status);
 
         if (!complaint) {
             const error = new Error('Complaint not found');
@@ -221,14 +220,15 @@ const assignComplaint = async (req, res, next) => {
     try {
         const { complaintId, department, autoAssign } = req.body;
 
-        // Try to find complaint
         let complaint = await Complaint.findByComplaintId(complaintId);
 
         if (!complaint) {
-            const internalId = parseInt(complaintId, 10);
-            if (!isNaN(internalId)) {
-                complaint = await Complaint.findById(internalId);
+            if (!/^\d+$/.test(complaintId)) {
+                const error = new Error('Invalid complaint ID');
+                error.statusCode = 400;
+                throw error;
             }
+            complaint = await Complaint.findById(Number(complaintId));
         }
 
         if (!complaint) {
@@ -273,19 +273,17 @@ const assignComplaint = async (req, res, next) => {
 const joinComplaint = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const internalId = parseInt(id, 10);
-        
-        if (isNaN(internalId)) {
+
+        if (!/^\d+$/.test(id)) {
             const error = new Error('Invalid complaint ID');
             error.statusCode = 400;
             throw error;
         }
 
-        // Track who joined (null if anonymous)
         const userId = req.user?.id || null;
         const sessionId = req.headers['x-session-id'] || null;
 
-        const complaint = await Complaint.join(internalId, userId, sessionId);
+        const complaint = await Complaint.join(Number(id), userId, sessionId);
 
         if (!complaint) {
             const error = new Error('Complaint not found');
@@ -329,10 +327,10 @@ const claimComplaint = async (req, res, next) => {
 
         let complaint = await Complaint.findByComplaintId(id);
         if (!complaint) {
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
-                complaint = await Complaint.findById(internalId);
+            if (!/^\d+$/.test(id)) {
+                return res.status(400).json({ success: false, error: { message: 'Invalid complaint ID' } });
             }
+            complaint = await Complaint.findById(Number(id));
         }
 
         if (!complaint) {
@@ -396,10 +394,10 @@ const resolveComplaint = async (req, res, next) => {
 
         let complaint = await Complaint.findByComplaintId(id);
         if (!complaint) {
-            const internalId = parseInt(id, 10);
-            if (!isNaN(internalId)) {
-                complaint = await Complaint.findById(internalId);
+            if (!/^\d+$/.test(id)) {
+                return res.status(400).json({ success: false, error: { message: 'Invalid complaint ID' } });
             }
+            complaint = await Complaint.findById(Number(id));
         }
 
         if (!complaint) {

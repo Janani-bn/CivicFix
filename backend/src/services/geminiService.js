@@ -33,15 +33,25 @@ ACTION:{"type":"track_complaint","data":{"complaintId":"<the ID>"}}
 Only include fields you can confidently extract. Omit fields you're unsure about.
 If the user's message is just a greeting or general question, respond normally without any ACTION block.`;
 
+// gemini-2.0-flash was shut down on June 1, 2026. Google lists gemini-3.6-flash
+// as its replacement. GEMINI_MODEL lets a deployment move to a newer model
+// without a code change the next time one is retired.
+const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
+
 let genAI = null;
 let model = null;
+
+function getModelName() {
+    const configured = process.env.GEMINI_MODEL ? process.env.GEMINI_MODEL.trim() : '';
+    return configured || DEFAULT_GEMINI_MODEL;
+}
 
 function getModel() {
     if (!model) {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return null;
         genAI = new GoogleGenerativeAI(apiKey);
-        model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        model = genAI.getGenerativeModel({ model: getModelName() });
     }
     return model;
 }
@@ -121,4 +131,4 @@ Respond with ONLY the improved description text, nothing else.`;
     return result.response.text().trim();
 }
 
-module.exports = { chat, analyzeDescription, enhanceDescription };
+module.exports = { chat, analyzeDescription, enhanceDescription, getModelName, DEFAULT_GEMINI_MODEL };

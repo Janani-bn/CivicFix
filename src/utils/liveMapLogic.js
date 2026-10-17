@@ -86,7 +86,7 @@ export const processReports = (apiReports = [], localReports = []) => {
             status: r.status || "Pending",
             date: r.created_at ? new Date(r.created_at).toLocaleDateString() : (r.date || "Today"),
         }))
-        .filter((r) => r.lat && r.lng);
+        .filter((r) => r.lat !== null && r.lat !== undefined && r.lat !== '' && r.lng !== null && r.lng !== undefined && r.lng !== '');
 };
 
 /**

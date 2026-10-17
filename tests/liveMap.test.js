@@ -445,4 +445,17 @@ describe("TEST C — REAL REPORT", () => {
         const ids = processed.map((r) => r.complaint_id);
         assert.deepStrictEqual(ids, ["CMP-M100", "CMP-M200", "CMP-M300"]);
     });
+
+    describe("zero coordinates (#164)", () => {
+        test("reports at latitude 0 or longitude 0 are kept (zero is a real coordinate)", () => {
+            const equator = { complaint_id: "CMP-Z1", lat: 0, lng: 77.5, description: "on the equator" };
+            const meridian = { complaint_id: "CMP-Z2", lat: 51.5, lng: 0, description: "on the prime meridian" };
+            const absent = { complaint_id: "CMP-Z3", lat: null, lng: null, description: "no location" };
+            const processed = processReports([equator, meridian, absent], []);
+            const ids = processed.map((r) => r.complaint_id);
+            assert.ok(ids.includes("CMP-Z1"), "lat 0 must survive the merge");
+            assert.ok(ids.includes("CMP-Z2"), "lng 0 must survive the merge");
+            assert.ok(!ids.includes("CMP-Z3"), "genuinely location-less rows still drop");
+        });
+    });
 });

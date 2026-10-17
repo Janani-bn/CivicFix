@@ -63,6 +63,8 @@ Then edit `backend/.env` and replace the placeholder:
 GEMINI_API_KEY=your_actual_api_key_here
 ```
 
+The backend uses `gemini-3.6-flash` by default. To use a different model (for example when Google retires one), set `GEMINI_MODEL` in the same file. Check the [Gemini deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) for current model IDs.
+
 The AI chatbot will work once the key is set. Without it, the rest of the app functions normally — the chatbot simply shows "AI unavailable."
 
 ## JWT Authentication Setup

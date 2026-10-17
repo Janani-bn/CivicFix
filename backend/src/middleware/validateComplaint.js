@@ -38,8 +38,10 @@ const validateComplaint = (req, res, next) => {
 
     if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
-    } else if (!/^[\d\s\-+()]{10,}$/.test(phone)) {
-        errors.push('Phone number must be at least 10 digits');
+    } else if (!/^[\d\s\-+()]+$/.test(phone)) {
+        errors.push('Phone number contains invalid characters');
+    } else if ((phone.match(/\d/g) || []).length < 10) {
+        errors.push('Phone number must contain at least 10 digits');
     }
 
     if (typeof area !== 'string' || area.trim() === '') {

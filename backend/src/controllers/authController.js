@@ -173,8 +173,12 @@ const updateLocation = async (req, res, next) => {
         const lat = Number(latitude);
         const lng = Number(longitude);
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return res.status(400).json({ success: false, error: { message: 'latitude and longitude are required' } });
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return res.status(400).json({ success: false, error: { message: 'latitude and longitude must be finite numbers' } });
+        }
+
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return res.status(400).json({ success: false, error: { message: 'latitude must be within [-90, 90] and longitude within [-180, 180]' } });
         }
 
         const user = await User.updateLocation(req.user.id, {

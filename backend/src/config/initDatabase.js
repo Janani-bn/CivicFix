@@ -160,6 +160,24 @@ const initDatabase = async () => {
             await pool.query(index);
         }
 
+        // One pending request per user. Databases created before this guard
+        // may already hold duplicate pending rows, which would block the
+        // unique index below, so keep the earliest pending row per user and
+        // drop the extras first.
+        await pool.query(
+            `DELETE FROM volunteer_requests
+             WHERE status = 'pending' AND id NOT IN (
+                 SELECT MIN(id) FROM volunteer_requests
+                 WHERE status = 'pending'
+                 GROUP BY user_id
+             )`
+        );
+
+        await pool.query(
+            `CREATE UNIQUE INDEX IF NOT EXISTS idx_volunteer_requests_pending_user
+             ON volunteer_requests(user_id) WHERE status = 'pending'`
+        );
+
         console.log('Complaints table and indices created successfully');
     } catch (err) {
         console.error('Error creating complaints table:', err);

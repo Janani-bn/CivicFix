@@ -10,21 +10,13 @@ const getAdminCredentials = () => ({
     password: process.env.admin_pass
 });
 
-const isAdminSignup = ({ name, email, password }) => {
-    const admin = getAdminCredentials();
-    return Boolean(
-        admin.name && admin.email && admin.password &&
-        String(name).trim() === admin.name &&
-        String(email).trim().toLowerCase() === admin.email &&
-        String(password) === admin.password
-    );
-};
-
 const isAdminLogin = ({ user, password }) => {
     const admin = getAdminCredentials();
+
     return Boolean(
-        user && admin.name && admin.email && admin.password &&
-        String(user.name).trim() === admin.name &&
+        user &&
+        admin.email &&
+        admin.password &&
         String(user.email).trim().toLowerCase() === admin.email &&
         String(password) === admin.password
     );
@@ -32,11 +24,16 @@ const isAdminLogin = ({ user, password }) => {
 
 const signToken = (user) => {
     return jwt.sign(
-        { userId: user.id, email: user.email },
+        {
+            userId: user.id,
+            email: user.email,
+            role: user.role
+        },
         JWT_SECRET,
         { expiresIn: '7d', algorithm: 'HS256' }
     );
 };
+
 
 const signup = async (req, res, next) => {
     try {
@@ -58,7 +55,7 @@ const signup = async (req, res, next) => {
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
-        const role = isAdminSignup({ name, email, password }) ? 'admin' : 'citizen';
+        const role = 'citizen';
 
         const user = await User.create({
             name: name.trim(),
@@ -101,12 +98,10 @@ const login = async (req, res, next) => {
 
         if (isAdminLogin({ user, password })) {
             role = 'admin';
+        
             if (user.role !== 'admin') {
-                try {
-                    await User.updateRole(user.id, 'admin');
-                } catch {
-                    // Non-fatal: still return admin role for this session.
-                }
+                await User.updateRole(user.id, 'admin');
+                user.role = 'admin';
             }
         }
 
@@ -137,17 +132,7 @@ const me = async (req, res, next) => {
         }
 
         // Enforce: only the designated admin email can have role 'admin' in responses.
-        const admin = getAdminCredentials();
-        const isDesignatedAdmin = Boolean(
-            admin.name && admin.email &&
-            String(user.name).trim() === admin.name &&
-            String(user.email).trim().toLowerCase() === admin.email
-        );
-
-        let role = user.role || 'citizen';
-        if (isDesignatedAdmin) {
-            role = 'admin';
-        }
+        const role = user.role || 'citizen';
 
         const safeUser = {
             id: user.id,
@@ -173,7 +158,14 @@ const updateLocation = async (req, res, next) => {
         const lat = Number(latitude);
         const lng = Number(longitude);
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+           if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+        ) {
             return res.status(400).json({ success: false, error: { message: 'latitude and longitude are required' } });
         }
 

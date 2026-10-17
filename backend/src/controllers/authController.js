@@ -136,18 +136,10 @@ const me = async (req, res, next) => {
             return res.status(404).json({ success: false, error: { message: 'User not found' } });
         }
 
-        // Enforce: only the designated admin email can have role 'admin' in responses.
-        const admin = getAdminCredentials();
-        const isDesignatedAdmin = Boolean(
-            admin.name && admin.email &&
-            String(user.name).trim() === admin.name &&
-            String(user.email).trim().toLowerCase() === admin.email
-        );
-
-        let role = user.role || 'citizen';
-        if (isDesignatedAdmin) {
-            role = 'admin';
-        }
+        // Report the stored role. Signup and login already promote the designated
+        // admin after checking the configured password; matching name and email
+        // without that check must not turn an account into an admin.
+        const role = user.role || 'citizen';
 
         const safeUser = {
             id: user.id,

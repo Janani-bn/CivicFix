@@ -297,15 +297,7 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
       setView('success');
     } catch (err) {
       console.error('Submission Error:', err);
-      // Mock fallback
-      setTimeout(() => {
-          const newId = `CMP-${Math.floor(1000 + Math.random() * 9000)}`;
-          setIssueId(newId);
-          setSuccessType('created');
-          setIsSubmitted(true);
-          setView('success');
-          window.dispatchEvent(new Event('civicfix:complaint-created'));
-      }, 500);
+      setError(err.message || 'Failed to submit complaint. Please try again.');
     } finally {
       setSubmitting(false);
     }

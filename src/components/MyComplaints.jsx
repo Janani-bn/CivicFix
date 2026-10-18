@@ -36,7 +36,8 @@ const MyComplaints = () => {
       const submittedData = await submittedRes.json();
       const joinedData = await joinedRes.json();
 
-      if (!submittedRes.ok) throw new Error(submittedData.error?.message || 'Failed to fetch complaints');
+      if (!submittedRes.ok) throw new Error(submittedData.error?.message || 'Failed to fetch submitted complaints');
+      if (!joinedRes.ok) throw new Error(joinedData.error?.message || 'Failed to fetch joined complaints');
 
       setSubmitted(submittedData.data || []);
       setJoined(joinedData.data || []);

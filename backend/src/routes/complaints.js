@@ -59,8 +59,8 @@ router.post('/:id/resolve', authenticate, requireVolunteer, resolveComplaint);
 // 4. GET /complaints/:id - Fetch complaint details
 router.get('/:id', getComplaintById);
 
-// 5. GET /complaints - List all complaints (admin)
-router.get('/', authenticate, authorizeAdmin, getAllComplaints);
+// 5. GET /complaints - List all complaints (public, PII-sanitized)
+router.get('/', getAllComplaints);
 
 // 6. PUT /complaints/:id - Update status (Pending → In Progress → Resolved)
 // Requires authentication and admin authorization.

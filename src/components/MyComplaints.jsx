@@ -36,37 +36,16 @@ const MyComplaints = () => {
       const submittedData = await submittedRes.json();
       const joinedData = await joinedRes.json();
 
-      if (!submittedRes.ok) throw new Error(submittedData.error?.message || 'Failed to fetch complaints');
+      if (!submittedRes.ok) throw new Error(submittedData.error?.message || 'Failed to fetch submitted complaints');
+      if (!joinedRes.ok) throw new Error(joinedData.error?.message || 'Failed to fetch joined complaints');
 
       setSubmitted(submittedData.data || []);
       setJoined(joinedData.data || []);
     } catch (err) {
-      console.warn('Backend fetch user profile error. Simulating success...', err);
-      // MOCK FALLBACK for UI testing without backend
-      setTimeout(() => {
-        const localIssues = JSON.parse(localStorage.getItem('civicfix_issues') || '[]');
-        
-        // Format localStorage issues to match backend response structure
-        const formattedLocalIssues = localIssues.map(issue => ({
-            id: issue.id || Math.random(),
-            complaint_id: issue.complaint_id || issue.id || 'CMP-LOCAL',
-            issue_type: issue.issueType || issue.title,
-            description: issue.description,
-            status: issue.status || 'Pending',
-            area: issue.area,
-            city: issue.city,
-            created_at: issue.submittedAt || issue.created_at || new Date().toISOString()
-        }));
-
-        setSubmitted([
-            ...formattedLocalIssues,
-            { id: 1, complaint_id: 'CMP-1234', issue_type: 'Pothole', description: 'Large pothole on main road', status: 'Pending', area: 'Downtown', city: 'Metropolis', created_at: new Date(Date.now() - 86400000).toISOString() },
-        ]);
-        setJoined([
-            { id: 2, complaint_id: 'CMP-5678', issue_type: 'Broken Streetlight', description: 'Streetlight is completely out', status: 'In Progress', area: 'East End', city: 'Metropolis', created_at: new Date().toISOString(), joined_at: new Date().toISOString(), supporter_count: 8 },
-        ]);
-        setLoading(false);
-      }, 800);
+      console.error('Failed to fetch complaints:', err);
+      setError(err.message || 'Failed to load your complaints. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

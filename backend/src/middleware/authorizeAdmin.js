@@ -1,20 +1,8 @@
-const User = require('../models/User');
 
-const authorizeAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user.id);
+const { requireAdmin } = require('./auth');
 
-        if (!user || user.role !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                error: { message: 'Forbidden' }
-            });
-        }
-
-        return next();
-    } catch (err) {
-        return next(err);
-    }
+const authorizeAdmin = (req, res, next) => {
+    return requireAdmin(req, res, next);
 };
 
 module.exports = authorizeAdmin;

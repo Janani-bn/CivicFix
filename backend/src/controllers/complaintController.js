@@ -181,6 +181,66 @@ const getAllComplaints = async (req, res, next) => {
     }
 };
 
+
+/**
+ * Get all complaints with reporter details (admin only)
+ * GET /complaints/admin
+ */
+const getAdminComplaints = async (req, res, next) => {
+    try {
+        const { status, department } = req.query;
+        const filters = {};
+
+        if (status) filters.status = status;
+        if (department) filters.department = department;
+
+        const complaints = await Complaint.findAll(filters);
+
+        const adminFields = [
+            'id',
+            'complaint_id',
+            'name',
+            'reporter_name',
+            'phone',
+            'email',
+            'issue_type',
+            'description',
+            'severity',
+            'status',
+            'department',
+            'area',
+            'city',
+            'landmark',
+            'latitude',
+            'longitude',
+            'image_url',
+            'supporter_count',
+            'allow_volunteers',
+            'created_at',
+            'updated_at'
+        ];
+
+        const data = complaints.map((complaint) =>
+            Object.fromEntries(
+                adminFields
+                    .filter((field) =>
+                        Object.prototype.hasOwnProperty.call(complaint, field)
+                    )
+                    .map((field) => [field, complaint[field]])
+            )
+        );
+
+        res.json({
+            success: true,
+            count: data.length,
+            data
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
 /**
  * Update complaint status
  * PUT /complaints/:id
@@ -441,6 +501,7 @@ module.exports = {
     getNearbyComplaints,
     getComplaintById,
     getAllComplaints,
+    getAdminComplaints,
     updateComplaintStatus,
     assignComplaint,
     joinComplaint,

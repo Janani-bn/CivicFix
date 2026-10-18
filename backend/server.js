@@ -19,6 +19,8 @@ const volunteerRoutes = require('./src/routes/volunteers');
 
 // Import middleware
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
+const { authenticate } = require('./src/middleware/auth');
+const authorizeAdmin = require('./src/middleware/authorizeAdmin');
 const { AI_MAX_BODY_SIZE } = require('./src/utils/aiLimits');
 
 // Ensure DB schema exists (idempotent)
@@ -82,7 +84,13 @@ app.use('/api/volunteers', volunteerRoutes);
 
 // 2. POST /assign - Assign complaint to department
 // Mounted directly as per architecture spec
-app.post('/api/assign', validateDepartmentAssignment, assignComplaint);
+app.post(
+    '/api/assign',
+    authenticate,
+    authorizeAdmin,
+    validateDepartmentAssignment,
+    assignComplaint
+);
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);

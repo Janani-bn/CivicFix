@@ -31,9 +31,9 @@ export const AuthProvider = ({ children }) => {
 
         setUser(data.data.user);
       } catch {
-        // MOCK FALLBACK for UI testing without backend
-        console.warn('Backend /auth/me failed. Using mock user.');
-        setUser({ id: 'mock-user-1', name: 'Admin/Demo User', email: 'admin@civicfix.com', role: 'admin' });
+        localStorage.removeItem('civicfix_token');
+        setToken(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -57,16 +57,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.data.user);
       return data.data.user;
     } catch (err) {
-      console.warn('Backend signup error. Simulating success...', err);
-      return new Promise((resolve) => setTimeout(() => {
-        const mockToken = 'mock-jwt-token';
-        const assignedRole = email.toLowerCase().includes('admin') ? 'admin' : role.toLowerCase();
-        const mockUser = { id: 'mock-user-1', name, email, role: assignedRole };
-        localStorage.setItem('civicfix_token', mockToken);
-        setToken(mockToken);
-        setUser(mockUser);
-        resolve(mockUser);
-      }, 800));
+      throw new Error(err.message || 'Signup failed');
     }
   };
 
@@ -85,16 +76,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.data.user);
       return data.data.user;
     } catch (err) {
-      console.warn('Backend login error. Simulating success...', err);
-      return new Promise((resolve) => setTimeout(() => {
-        const mockToken = 'mock-jwt-token';
-        const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
-        const mockUser = { id: 'mock-user-1', name: role === 'admin' ? 'System Admin' : 'Demo User', email, role };
-        localStorage.setItem('civicfix_token', mockToken);
-        setToken(mockToken);
-        setUser(mockUser);
-        resolve(mockUser);
-      }, 800));
+      throw new Error(err.message || 'Login failed');
     }
   };
 

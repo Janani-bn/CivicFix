@@ -5,8 +5,13 @@ const fs = require('fs');
 // Create a local SQLite database file
 const dbPath = path.join(__dirname, '../../civicfix.sqlite');
 
-// Initialize the database
-const db = new Database(dbPath, { verbose: console.log });
+// Initialize the database. Statement logging helps locally but would copy
+// user data and password hashes into logs in other environments, so it stays
+// on for development only.
+const db = new Database(dbPath, {
+    verbose:
+        process.env.NODE_ENV === 'development' ? console.log : undefined
+});
 
 // Emulate a pg-pool-like interface for minimal changes in other files
 const pool = {

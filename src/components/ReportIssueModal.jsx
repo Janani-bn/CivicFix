@@ -232,18 +232,20 @@ const ReportIssueModal = ({ isOpen, onClose, prefillData, initialData }) => {
     setError(null);
 
     let position = null;
-    try {
-      if (formData.area || formData.city) {
+
+    // Try Maps link first — it carries exact coordinates
+    if (formData.mapsLink) {
+      const match = formData.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) position = [parseFloat(match[1]), parseFloat(match[2])];
+    }
+
+    // Fall back to geocoding when no link coords are available
+    if (!position && (formData.area || formData.city)) {
+      try {
         position = await geocodeAddress(formData.area, formData.city);
+      } catch {
+        // Geocoding failed — position stays null; will be caught below
       }
-      if (!position && formData.mapsLink) {
-        const match = formData.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (match) position = [parseFloat(match[1]), parseFloat(match[2])];
-      }
-    } catch (err) {
-      setError(err.message);
-      setSubmitting(false);
-      return;
     }
 
     if (!position) {

@@ -250,7 +250,7 @@ const AdminDashboard = () => {
     };
 
     const getStatusClass = (status) => {
-        return status.toLowerCase().replace(' ', '-');
+        return String(status || 'unknown').toLowerCase().replace(' ', '-');
     };
 
     const toggleExpand = (id) => {
@@ -563,7 +563,7 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <div className="action-group">
-                                                {complaint.status !== 'Resolved' ? (
+                                                {getNextStatus(complaint.status) ? (
                                                     <button
                                                         className={`update-btn ${getNextStatus(complaint.status).toLowerCase().replace(' ', '-')}`}
                                                         onClick={() => updateStatus(complaint.id, getNextStatus(complaint.status))}

@@ -3,12 +3,13 @@ const router = express.Router();
 
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const { loginRateLimit, signupRateLimit } = require('../middleware/authRateLimit');
 
 // POST /api/auth/signup
-router.post('/signup', authController.signup);
+router.post('/signup', signupRateLimit, authController.signup);
 
 // POST /api/auth/login
-router.post('/login', authController.login);
+router.post('/login', loginRateLimit, authController.login);
 
 // GET /api/auth/me
 router.get('/me', authenticate, authController.me);

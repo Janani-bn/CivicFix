@@ -3,11 +3,14 @@ const pool = require('../config/database');
 class VolunteerRequest {
     static async create({ userId }) {
         const query = `
-            INSERT INTO volunteer_requests (user_id, status)
+            INSERT OR IGNORE INTO volunteer_requests (user_id, status)
             VALUES ($1, 'pending')
             RETURNING id, user_id, status, reviewed_by, reviewed_at, created_at, updated_at
         `;
         const result = await pool.query(query, [userId]);
+        if (result.rows.length === 0) {
+            return VolunteerRequest.findPendingByUserId(userId);
+        }
         return result.rows[0];
     }
 

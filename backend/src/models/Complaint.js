@@ -313,7 +313,7 @@ class Complaint {
      */
     static async claim(id, volunteerId, volunteerName) {
         let complaintId = id;
-        if (typeof id === 'string' && id.startsWith('CF-')) {
+        if (typeof id === 'string' && id.startsWith('CIV-')) {
             const existing = await this.findByComplaintId(id);
             if (!existing) return null;
             complaintId = existing.id;
@@ -342,7 +342,7 @@ class Complaint {
      */
     static async resolve(id, volunteerId, volunteerName) {
         let complaintId = id;
-        if (typeof id === 'string' && id.startsWith('CF-')) {
+        if (typeof id === 'string' && id.startsWith('CIV-')) {
             const existing = await this.findByComplaintId(id);
             if (!existing) return null;
             complaintId = existing.id;

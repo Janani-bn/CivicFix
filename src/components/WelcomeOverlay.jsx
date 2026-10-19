@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './WelcomeOverlay.css';
-
-const STORAGE_KEY = 'civicfix_welcomed';
+import { hasSeenWelcome, markWelcomeSeen } from '../utils/welcomeOverlay';
 
 const speak = (text, lang = 'en-IN') => {
   if (!('speechSynthesis' in window)) return;
@@ -66,6 +65,8 @@ const WelcomeOverlay = ({ onStartGuide, onOpenChatbot, onLanguageSelect }) => {
   const pointerTimer = useRef(null);
 
   useEffect(() => {
+    // Only greet once per browser session; dismiss() records that it was seen.
+    if (hasSeenWelcome()) return;
     const timer = setTimeout(() => setVisible(true), 400);
     return () => clearTimeout(timer);
   }, []);
@@ -90,7 +91,7 @@ const WelcomeOverlay = ({ onStartGuide, onOpenChatbot, onLanguageSelect }) => {
   const dismiss = (action) => {
     window.speechSynthesis.cancel();
     clearInterval(pointerTimer.current);
-    sessionStorage.setItem(STORAGE_KEY, '1');
+    markWelcomeSeen();
     setVisible(false);
     if (action === 'guide') onStartGuide();
     if (action === 'chatbot') onOpenChatbot();

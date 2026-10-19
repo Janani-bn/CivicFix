@@ -86,7 +86,7 @@ export const processReports = (apiReports = [], localReports = []) => {
             status: r.status || "Pending",
             date: r.created_at ? new Date(r.created_at).toLocaleDateString() : (r.date || "Today"),
         }))
-        .filter((r) => r.lat && r.lng);
+        .filter((r) => r.lat != null && r.lng != null && !Number.isNaN(Number(r.lat)) && !Number.isNaN(Number(r.lng)));
 };
 
 /**

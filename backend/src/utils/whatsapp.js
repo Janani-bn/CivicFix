@@ -9,10 +9,13 @@ const generateWhatsAppLink = (phone, details) => {
 
     // Remove any non-numeric characters and ensure '91' prefix
     let cleanPhone = phone.replace(/\D/g, '');
-    
+
+    // E.164 numbers cannot exceed 15 digits — reject anything longer
+    if (cleanPhone.length > 15) return null;
+
     if (cleanPhone.length === 10) {
-    cleanPhone = '91' + cleanPhone;
-}
+        cleanPhone = '91' + cleanPhone;
+    }
 
     const { complaintId, issueType, area, city, status } = details;
     const location = `${area}, ${city}`;

@@ -131,6 +131,9 @@ class Complaint {
     /**
      * Get nearby complaints using Haversine distance
      * Note: Uses duplicated placeholders (handled by our SQLite wrapper).
+     * The acos input is clamped to [-1, 1]: for two identical points floating
+     * point rounding can push it to 1.0000000000000002, and acos() of that is
+     * NULL, which would drop the closest complaint from the results.
      */
     static async findNearby(lat, lng, radiusKm = 10) {
         const query = `
@@ -138,11 +141,11 @@ class Complaint {
                 SELECT
                     c.*,
                     COALESCE(u.name, c.name) AS reporter_name,
-                    (6371 * acos(
+                    (6371 * acos(MIN(1.0, MAX(-1.0,
                         cos(radians($1)) * cos(radians(c.latitude)) *
                         cos(radians(c.longitude) - radians($2)) +
                         sin(radians($1)) * sin(radians(c.latitude))
-                    )) AS distance_km
+                    )))) AS distance_km
                 FROM complaints c
                 LEFT JOIN users u ON u.id = c.user_id
                 WHERE c.latitude IS NOT NULL AND c.longitude IS NOT NULL

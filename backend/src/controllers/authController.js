@@ -51,6 +51,9 @@ const signup = async (req, res, next) => {
         if (typeof password !== 'string' || password.length < 6) {
             return res.status(400).json({ success: false, error: { message: 'Password must be at least 6 characters' } });
         }
+        if (Buffer.byteLength(password, 'utf8') > 72) {
+            return res.status(400).json({ success: false, error: { message: 'Password must not exceed 72 bytes' } });
+        }
 
         const existing = await User.findByEmail(email.trim().toLowerCase());
         if (existing) {
@@ -84,6 +87,9 @@ const login = async (req, res, next) => {
 
         if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
             return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
+        }
+        if (Buffer.byteLength(password, 'utf8') > 72) {
+            return res.status(401).json({ success: false, error: { message: 'Invalid credentials' } });
         }
 
         const user = await User.findByEmail(email.trim().toLowerCase());

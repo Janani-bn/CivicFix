@@ -1,5 +1,8 @@
 // Department routing logic based on issue type
 const routeToDepartment = (issueType) => {
+    if (typeof issueType !== 'string' || !issueType.trim()) {
+        return 'General Administration';
+    }
     const normalizedType = issueType.toLowerCase().trim();
 
     if (normalizedType.includes('pothole') || normalizedType.includes('road')) {

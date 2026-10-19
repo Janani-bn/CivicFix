@@ -86,7 +86,9 @@ const requireVolunteer = async (req, res, next) => {
 
 /**
  * Require admin role.
- * User must be authenticated and have role 'admin' or match designated admin credentials.
+ * User must be authenticated and have the stored role 'admin'. The designated
+ * admin gets that role at signup or login, but only after the configured
+ * password has been checked, so a matching name and email alone is not enough.
  */
 const requireAdmin = async (req, res, next) => {
     if (!req.user || !req.user.id) {
@@ -98,24 +100,7 @@ const requireAdmin = async (req, res, next) => {
 
     try {
         const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(403).json({
-                success: false,
-                error: { message: 'Forbidden: Admin access required' }
-            });
-        }
-
-        const adminName = process.env.admin_name;
-        const adminEmail = process.env.admin_email;
-        const isDesignatedAdmin = Boolean(
-            adminEmail && adminName &&
-            String(user.name).trim() === adminName &&
-            String(user.email).trim().toLowerCase() === String(adminEmail).trim().toLowerCase()
-        );
-
-        const role = (user.role === 'admin' || isDesignatedAdmin) ? 'admin' : user.role;
-
-        if (role !== 'admin') {
+        if (!user || user.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 error: { message: 'Forbidden: Admin access required' }

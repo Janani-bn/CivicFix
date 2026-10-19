@@ -251,6 +251,11 @@ const LiveChatbot = ({ onAutoFill, forceOpen, onForceOpened }) => {
 
     botSay(lines, 200, () => {
       setTimeout(() => {
+        const phoneDigits = (data.phone || '').match(/\d/g) || [];
+        if (data.phone && phoneDigits.length < 10) {
+          botSay("⚠️ The phone number I detected looks invalid. Please enter a correct 10+ digit number before submitting.", 200);
+          return;
+        }
         if (onAutoFill) onAutoFill(data);
         botSay("🎉 I've auto-filled the form for you! Verify and submit.", 200);
       }, 800);
@@ -303,11 +308,17 @@ const LiveChatbot = ({ onAutoFill, forceOpen, onForceOpened }) => {
         setFormData(d_name);
         goToStep('ask_phone', d_name);
         break;
-      case 'ask_phone':
-        const d_phone = { ...formData, phone: skip ? '' : val };
+      case 'ask_phone': {
+        const phoneVal = skip ? '' : val;
+        if (phoneVal && (phoneVal.match(/\d/g) || []).length < 10) {
+          botSay("That doesn't look like a valid phone number. Please enter at least 10 digits, or skip.");
+          break;
+        }
+        const d_phone = { ...formData, phone: phoneVal };
         setFormData(d_phone);
         goToStep('confirm', d_phone);
         break;
+      }
       default:
         break;
     }

@@ -34,28 +34,48 @@ const validateComplaint = (req, res, next) => {
     // Required fields
     if (typeof name !== 'string' || name.trim() === '') {
         errors.push('Name is required');
+    } else if (name.length > 200) {
+        errors.push('Name must not exceed 200 characters');
     }
 
     if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
-    } else if (!/^[\d\s\-+()]{10,}$/.test(phone)) {
-        errors.push('Phone number must be at least 10 digits');
+    } else if (!/^[\d\s\-+()]+$/.test(phone)) {
+        errors.push('Phone number contains invalid characters');
+    } else if ((phone.match(/\d/g) || []).length < 10) {
+        errors.push('Phone number must contain at least 10 digits');
     }
 
     if (typeof area !== 'string' || area.trim() === '') {
         errors.push('Area is required');
+    } else if (area.length > 200) {
+        errors.push('Area must not exceed 200 characters');
     }
 
     if (typeof city !== 'string' || city.trim() === '') {
         errors.push('City is required');
+    } else if (city.length > 200) {
+        errors.push('City must not exceed 200 characters');
     }
 
     if (typeof issueType !== 'string' || issueType.trim() === '') {
         errors.push('Issue type is required');
+    } else if (issueType.length > 200) {
+        errors.push('Issue type must not exceed 200 characters');
     }
 
     if (typeof description !== 'string' || description.trim() === '') {
         errors.push('Description is required');
+    } else if (description.length > 5000) {
+        errors.push('Description must not exceed 5000 characters');
+    }
+
+    const { landmark, email } = req.body || {};
+    if (typeof landmark === 'string' && landmark.length > 500) {
+        errors.push('Landmark must not exceed 500 characters');
+    }
+    if (typeof email === 'string' && email.length > 254) {
+        errors.push('Email must not exceed 254 characters');
     }
 
     if (errors.length > 0) {

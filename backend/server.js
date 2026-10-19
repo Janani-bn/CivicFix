@@ -44,8 +44,9 @@ app.use('/api/ai', express.urlencoded({
 
 app.use('/api/ai', aiRoutes);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+const GLOBAL_BODY_LIMIT = process.env.BODY_SIZE_LIMIT || '1mb';
+app.use(express.json({ limit: GLOBAL_BODY_LIMIT }));
+app.use(express.urlencoded({ limit: GLOBAL_BODY_LIMIT, extended: true }));
 app.use('/uploads', (req, res, next) => {
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
     const extension = path.extname(req.path).toLowerCase();

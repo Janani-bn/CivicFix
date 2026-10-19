@@ -5,8 +5,9 @@ const fs = require('fs');
 // Create a local SQLite database file
 const dbPath = path.join(__dirname, '../../civicfix.sqlite');
 
-// Initialize the database
-const db = new Database(dbPath, { verbose: console.log });
+// Initialize the database — only log statements in development
+const verbose = process.env.NODE_ENV === 'development' ? console.log : undefined;
+const db = new Database(dbPath, { verbose });
 
 // Emulate a pg-pool-like interface for minimal changes in other files
 const pool = {

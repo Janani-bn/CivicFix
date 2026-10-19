@@ -21,10 +21,11 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     try {
-      await login({ ...formData, role });
-      localStorage.setItem('userRole', role);
-      if (role === 'volunteer') navigate('/volunteer');
-      else if (role === 'admin') navigate('/admin');
+      const user = await login({ ...formData, role });
+      const serverRole = user?.role || 'citizen';
+      localStorage.setItem('userRole', serverRole);
+      if (serverRole === 'admin') navigate('/admin');
+      else if (serverRole === 'volunteer') navigate('/volunteer');
       else navigate('/feed');
     } catch (err) {
       setError(err.message || 'Login failed.');

@@ -98,13 +98,16 @@ const getNearbyComplaints = async (req, res, next) => {
         const lng = Number(req.query.lng);
         const radiusKm = req.query.radiusKm ? Number(req.query.radiusKm) : 10;
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return res.status(400).json({
-                success: false,
-                error: { message: 'lat and lng are required' }
-            });
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return res.status(400).json({ success: false, error: { message: 'lat and lng must be finite numbers' } });
         }
-        if (Number.isNaN(radiusKm) || radiusKm <= 0) {
+        if (lat < -90 || lat > 90) {
+            return res.status(400).json({ success: false, error: { message: 'lat must be between -90 and 90' } });
+        }
+        if (lng < -180 || lng > 180) {
+            return res.status(400).json({ success: false, error: { message: 'lng must be between -180 and 180' } });
+        }
+        if (!Number.isFinite(radiusKm) || radiusKm <= 0) {
             return res.status(400).json({
                 success: false,
                 error: { message: 'radiusKm must be a positive number' }

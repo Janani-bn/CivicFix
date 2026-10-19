@@ -66,6 +66,11 @@ const WelcomeOverlay = ({ onStartGuide, onOpenChatbot, onLanguageSelect }) => {
   const pointerTimer = useRef(null);
 
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem(STORAGE_KEY) === '1') return;
+    } catch {
+      // sessionStorage blocked (private browsing, storage quota) — show overlay
+    }
     const timer = setTimeout(() => setVisible(true), 400);
     return () => clearTimeout(timer);
   }, []);

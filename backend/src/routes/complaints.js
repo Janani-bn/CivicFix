@@ -5,6 +5,7 @@ const {
     createComplaint,
     getComplaintById,
     getAllComplaints,
+    getAdminComplaints,
     getComplaintsByUser,
     getJoinedComplaints,
     getNearbyComplaints,
@@ -48,7 +49,12 @@ router.get('/joined', authenticate, getJoinedComplaints);
 router.get('/nearby', getNearbyComplaints);
 
 // Admin: GET /complaints/grouped-duplicates - complaints grouped by area+type (count >= 2)
-router.get('/grouped-duplicates', getGroupedDuplicates);
+router.get(
+    '/grouped-duplicates',
+    authenticate,
+    authorizeAdmin,
+    getGroupedDuplicates
+);
 
 // Volunteer: POST /complaints/:id/claim - Claim complaint
 router.post('/:id/claim', authenticate, requireVolunteer, claimComplaint);
@@ -56,7 +62,17 @@ router.post('/:id/claim', authenticate, requireVolunteer, claimComplaint);
 // Volunteer: POST /complaints/:id/resolve - Resolve complaint
 router.post('/:id/resolve', authenticate, requireVolunteer, resolveComplaint);
 
-// 4. GET /complaints/:id - Fetch complaint details
+
+
+// Admin: GET /complaints/admin - List complaints with reporter details
+router.get(
+    '/admin',
+    authenticate,
+    authorizeAdmin,
+    getAdminComplaints
+);
+
+// GET /complaints/:id - Fetch public complaint details
 router.get('/:id', getComplaintById);
 
 // 5. GET /complaints - List all complaints (admin)
@@ -77,6 +93,12 @@ router.post('/:id/join', authenticateOptional, joinComplaint);
 
 // 8. POST /assign - Assign complaint to department
 // (Note: This is mounted at /api/assign in server.js)
-router.post('/assign', validateDepartmentAssignment, assignComplaint);
+router.post(
+    '/assign',
+    authenticate,
+    authorizeAdmin,
+    validateDepartmentAssignment,
+    assignComplaint
+);
 
 module.exports = router;

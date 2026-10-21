@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { routeToDepartment } = require('../utils/departmentRouter');
 const { generateWhatsAppLink } = require('../utils/whatsapp');
 const { removeUploadedFile } = require('../middleware/uploadMiddleware');
+const { serializePublicComplaint } = require('../utils/publicComplaintSerializer');
 
 /**
  * Create a new complaint
@@ -64,7 +65,7 @@ const getComplaintsByUser = async (req, res, next) => {
         res.json({
             success: true,
             count: complaints.length,
-            data: complaints
+            data: complaints.map(serializePublicComplaint)
         });
     } catch (err) {
         next(err);
@@ -81,7 +82,7 @@ const getJoinedComplaints = async (req, res, next) => {
         res.json({
             success: true,
             count: complaints.length,
-            data: complaints
+            data: complaints.map(serializePublicComplaint)
         });
     } catch (err) {
         next(err);
@@ -115,7 +116,7 @@ const getNearbyComplaints = async (req, res, next) => {
         res.json({
             success: true,
             count: complaints.length,
-            data: complaints
+            data: complaints.map(serializePublicComplaint)
         });
     } catch (err) {
         next(err);
@@ -147,10 +148,10 @@ const getComplaintById = async (req, res, next) => {
             throw error;
         }
 
-        res.json({
-            success: true,
-            data: complaint
-        });
+       res.json({
+    success: true,
+    data: serializePublicComplaint(complaint)
+});
     } catch (err) {
         next(err);
     }
@@ -171,14 +172,74 @@ const getAllComplaints = async (req, res, next) => {
         const complaints = await Complaint.findAll(filters);
 
         res.json({
+    success: true,
+    count: complaints.length,
+    data: complaints.map(serializePublicComplaint)
+});
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+/**
+ * Get all complaints with reporter details (admin only)
+ * GET /complaints/admin
+ */
+const getAdminComplaints = async (req, res, next) => {
+    try {
+        const { status, department } = req.query;
+        const filters = {};
+
+        if (status) filters.status = status;
+        if (department) filters.department = department;
+
+        const complaints = await Complaint.findAll(filters);
+
+        const adminFields = [
+            'id',
+            'complaint_id',
+            'name',
+            'reporter_name',
+            'phone',
+            'email',
+            'issue_type',
+            'description',
+            'severity',
+            'status',
+            'department',
+            'area',
+            'city',
+            'landmark',
+            'latitude',
+            'longitude',
+            'image_url',
+            'supporter_count',
+            'allow_volunteers',
+            'created_at',
+            'updated_at'
+        ];
+
+        const data = complaints.map((complaint) =>
+            Object.fromEntries(
+                adminFields
+                    .filter((field) =>
+                        Object.prototype.hasOwnProperty.call(complaint, field)
+                    )
+                    .map((field) => [field, complaint[field]])
+            )
+        );
+
+        res.json({
             success: true,
-            count: complaints.length,
-            data: complaints
+            count: data.length,
+            data
         });
     } catch (err) {
         next(err);
     }
 };
+
 
 /**
  * Update complaint status
@@ -442,6 +503,7 @@ module.exports = {
     getNearbyComplaints,
     getComplaintById,
     getAllComplaints,
+    getAdminComplaints,
     updateComplaintStatus,
     assignComplaint,
     joinComplaint,

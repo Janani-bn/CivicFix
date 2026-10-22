@@ -27,6 +27,8 @@ const initDatabase = require('./src/config/initDatabase');
 // Import controllers for direct mounting
 const { assignComplaint } = require('./src/controllers/complaintController');
 const { validateDepartmentAssignment } = require('./src/middleware/validateComplaint');
+const { authenticate } = require('./src/middleware/auth');
+const authorizeAdmin = require('./src/middleware/authorizeAdmin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,7 +84,7 @@ app.use('/api/volunteers', volunteerRoutes);
 
 // 2. POST /assign - Assign complaint to department
 // Mounted directly as per architecture spec
-app.post('/api/assign', validateDepartmentAssignment, assignComplaint);
+app.post('/api/assign', authenticate, authorizeAdmin, validateDepartmentAssignment, assignComplaint);
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);

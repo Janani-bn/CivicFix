@@ -132,7 +132,10 @@ const AdminDashboard = () => {
     const fetchDuplicates = useCallback(async () => {
         setDuplicatesLoading(true);
         try {
-            const response = await fetch(`${API_BASE}/complaints/grouped-duplicates`);
+            const token = localStorage.getItem('civicfix_token');
+            const response = await fetch(`${API_BASE}/complaints/grouped-duplicates`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const data = await response.json();
             if (response.ok) {
                 setDuplicateGroups(data.data || []);
@@ -208,9 +211,13 @@ const AdminDashboard = () => {
         setUpdating({ ...updating, [id]: true });
 
         try {
+            const token = localStorage.getItem('civicfix_token');
             const response = await fetch(`${API_BASE}/assign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
                 body: JSON.stringify({ complaintId: id.toString(), department })
             });
 

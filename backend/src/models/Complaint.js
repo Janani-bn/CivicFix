@@ -216,6 +216,13 @@ class Complaint {
      * @returns {Object} Updated complaint
      */
     static async join(id, userId = null, sessionId = null) {
+        // Check first: recording a join for an id that doesn't exist yet leaves
+        // a row that later makes the real complaint report "already joined".
+        const existing = await pool.query('SELECT 1 FROM complaints WHERE id = $1', [id]);
+        if (existing.rows.length === 0) {
+            return null;
+        }
+
         const insertResult = await pool.query(
             `INSERT OR IGNORE INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)`,
             [id, userId, sessionId]

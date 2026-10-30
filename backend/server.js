@@ -57,6 +57,16 @@ app.use('/uploads', (req, res, next) => {
     next();
 }, express.static('uploads'));
 
+// Root & API welcome endpoint
+app.get(['/', '/api'], (req, res) => {
+    res.json({
+        success: true,
+        message: 'CivicFix API Server is active and running',
+        healthCheck: '/api/health',
+        documentation: '/api/complaints'
+    });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({

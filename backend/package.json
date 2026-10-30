@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "echo 'No build step required for backend'",
     "dev": "nodemon server.js",
     "init-db": "node src/config/initDatabase.js",
     "test": "node --require ./tests/setup-env.js --test --test-concurrency=1 \"tests/**/*.test.js\" \"src/**/*.test.js\""

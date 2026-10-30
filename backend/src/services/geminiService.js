@@ -41,7 +41,8 @@ function getModel() {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return null;
         genAI = new GoogleGenerativeAI(apiKey);
-        model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        model = genAI.getGenerativeModel({ model: modelName });
     }
     return model;
 }

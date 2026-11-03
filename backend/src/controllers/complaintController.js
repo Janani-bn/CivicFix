@@ -4,6 +4,23 @@ const { routeToDepartment } = require('../utils/departmentRouter');
 const { generateWhatsAppLink } = require('../utils/whatsapp');
 const { removeUploadedFile } = require('../middleware/uploadMiddleware');
 
+const PUBLIC_FIELDS = [
+    'id', 'complaint_id', 'issue_type', 'description', 'area', 'city',
+    'landmark', 'severity', 'duration', 'status', 'department',
+    'supporter_count', 'image_url', 'latitude', 'longitude',
+    'allow_volunteers', 'created_at', 'updated_at', 'reporter_name',
+    'distance_km', 'assigned_department', 'volunteer_id'
+];
+
+function sanitizeComplaint(complaint) {
+    if (!complaint) return complaint;
+    const safe = {};
+    for (const key of PUBLIC_FIELDS) {
+        if (key in complaint) safe[key] = complaint[key];
+    }
+    return safe;
+}
+
 /**
  * Create a new complaint
  * POST /complaints
@@ -115,7 +132,7 @@ const getNearbyComplaints = async (req, res, next) => {
         res.json({
             success: true,
             count: complaints.length,
-            data: complaints
+            data: complaints.map(sanitizeComplaint)
         });
     } catch (err) {
         next(err);
@@ -149,7 +166,7 @@ const getComplaintById = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: complaint
+            data: sanitizeComplaint(complaint)
         });
     } catch (err) {
         next(err);
@@ -173,7 +190,7 @@ const getAllComplaints = async (req, res, next) => {
         res.json({
             success: true,
             count: complaints.length,
-            data: complaints
+            data: complaints.map(sanitizeComplaint)
         });
     } catch (err) {
         next(err);

@@ -168,9 +168,15 @@ class Complaint {
             throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
         }
 
+        // Reopening releases the old assignment and resolution in the same write.
         const query = `
             UPDATE complaints
-            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            SET status = $1,
+                claimed_by_user_id = CASE WHEN $1 = 'Pending' THEN NULL ELSE claimed_by_user_id END,
+                claimed_by = CASE WHEN $1 = 'Pending' THEN NULL ELSE claimed_by END,
+                resolved_by_user_id = CASE WHEN $1 = 'Pending' THEN NULL ELSE resolved_by_user_id END,
+                resolved_by = CASE WHEN $1 = 'Pending' THEN NULL ELSE resolved_by END,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = $2
             RETURNING *
         `;

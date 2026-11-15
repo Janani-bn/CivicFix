@@ -861,7 +861,13 @@ test('20. Duplicate Group Severity Calculation Tests (Issue #71)', async () => {
     assert.strictEqual(groupSolo, undefined, 'Single report should not form a duplicate group');
 
     // Also test via API endpoint
-    const apiRes = await fetch(`${baseUrl}/complaints/grouped-duplicates`);
+
+const apiRes = await fetch(`${baseUrl}/complaints/grouped-duplicates`, {
+    headers: {
+        Authorization: `Bearer ${adminToken}`
+    }
+});
+
     assert.strictEqual(apiRes.status, 200);
     const apiBody = await apiRes.json();
     assert.strictEqual(apiBody.success, true);

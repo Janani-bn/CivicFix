@@ -1,23 +1,37 @@
+
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
   pull_request:
+
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Cancel outdated workflow runs for the same branch or PR.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+
+  # Backend test job
   backend-tests:
+    name: Backend Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - name: Get the code
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -29,17 +43,21 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm ci
 
       - name: Run backend tests
         run: npm test
 
+
+  # Frontend test job
   frontend-tests:
+    name: Frontend Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
-      - name: Get the code
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -51,17 +69,21 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
       - name: Run frontend tests
         run: npm test
 
+
+  # Frontend production build job
   frontend-build:
+    name: Frontend Production Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
-      - name: Get the code
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -73,7 +95,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
       - name: Build frontend

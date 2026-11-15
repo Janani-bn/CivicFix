@@ -99,7 +99,13 @@ const validateStatusUpdate = (req, res, next) => {
  * Validate department assignment
  */
 const validateDepartmentAssignment = (req, res, next) => {
-    const { department } = req.body || {};
+    const { department, autoAssign } = req.body || {};
+
+    // assignComplaint picks the department from the issue type when
+    // autoAssign is set, so a department isn't needed in that case.
+    if (autoAssign === true) {
+        return next();
+    }
 
     if (!department || typeof department !== 'string' || department.trim() === '') {
         return res.status(400).json({

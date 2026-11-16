@@ -2,9 +2,9 @@ const bcrypt = require('bcrypt');
 const pool = require('../src/config/database');
 
 async function createAdmin() {
-    const name = 'Janani Nagarajan';
-    const email = 'bnjanani258@gmail.com';
-    const password = '123456789';
+    const name = process.env.name;
+    const email = process.env.email;
+    const password = process.env.password;
     const role = 'admin';
 
     try {

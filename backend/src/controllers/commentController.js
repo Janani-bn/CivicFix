@@ -1,4 +1,5 @@
 const Comment = require('../models/Comment');
+const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 
 /**
@@ -17,6 +18,12 @@ const addComment = async (req, res, next) => {
             return res.status(400).json({ success: false, error: { message: 'message is required' } });
         }
 
+        const normalizedComplaintId = String(complaintId).trim();
+        const complaint = await Complaint.findByComplaintId(normalizedComplaintId);
+        if (!complaint) {
+            return res.status(404).json({ success: false, error: { message: 'Complaint not found' } });
+        }
+
         let authorName = (name && String(name).trim()) || null;
 
         if (!authorName && req.user?.id) {
@@ -27,7 +34,7 @@ const addComment = async (req, res, next) => {
         if (!authorName) authorName = 'Anonymous';
 
         const comment = await Comment.create({
-            complaintId: String(complaintId).trim(),
+            complaintId: normalizedComplaintId,
             authorName,
             message: String(message).trim()
         });

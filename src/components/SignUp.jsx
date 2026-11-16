@@ -27,11 +27,15 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
-      await signup(formData);
-      localStorage.setItem('userRole', formData.role);
-      if (formData.role === 'volunteer') navigate('/volunteer');
-      else if (formData.role === 'admin') navigate('/admin');
-      else navigate('/feed');
+      const user = await signup(formData);
+      localStorage.setItem('userRole', user.role || formData.role);
+      if (formData.role === 'volunteer') {
+        navigate('/feed', { state: { volunteerPending: true } });
+      } else if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/feed');
+      }
     } catch (err) {
       setError(err.message || 'An error occurred during signup.');
     } finally {

@@ -2,51 +2,54 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const User = require('../models/User');
+const VolunteerRequest = require('../models/VolunteerRequest');
+const { JWT_SECRET } = require('../config/jwt');
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
-
-const ADMIN_CREDENTIALS = {
+const getAdminCredentials = () => ({
     name: process.env.admin_name,
     email: process.env.admin_email,
     password: process.env.admin_pass
-};
+});
 
 const isAdminSignup = ({ name, email, password }) => {
-    return (
-        String(name).trim() === ADMIN_CREDENTIALS.name &&
-        String(email).trim().toLowerCase() === ADMIN_CREDENTIALS.email &&
-        String(password) === ADMIN_CREDENTIALS.password
+    const admin = getAdminCredentials();
+    return Boolean(
+        admin.name && admin.email && admin.password &&
+        String(name).trim() === admin.name &&
+        String(email).trim().toLowerCase() === admin.email &&
+        String(password) === admin.password
     );
 };
 
 const isAdminLogin = ({ user, password }) => {
-    return (
-        user &&
-        String(user.name).trim() === ADMIN_CREDENTIALS.name &&
-        String(user.email).trim().toLowerCase() === ADMIN_CREDENTIALS.email &&
-        String(password) === ADMIN_CREDENTIALS.password
+    const admin = getAdminCredentials();
+    return Boolean(
+        user && admin.name && admin.email && admin.password &&
+        String(user.name).trim() === admin.name &&
+        String(user.email).trim().toLowerCase() === admin.email &&
+        String(password) === admin.password
     );
 };
 
 const signToken = (user) => {
     return jwt.sign(
         { userId: user.id, email: user.email },
-        getJwtSecret(),
-        { expiresIn: '7d' }
+        JWT_SECRET,
+        { expiresIn: '7d', algorithm: 'HS256' }
     );
 };
 
 const signup = async (req, res, next) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role: requestedRole } = req.body || {};
 
-        if (!name || !name.trim()) {
+        if (typeof name !== 'string' || !name.trim()) {
             return res.status(400).json({ success: false, error: { message: 'Name is required' } });
         }
-        if (!email || !email.trim()) {
+        if (typeof email !== 'string' || !email.trim()) {
             return res.status(400).json({ success: false, error: { message: 'Email is required' } });
         }
-        if (!password || String(password).length < 6) {
+        if (typeof password !== 'string' || password.length < 6) {
             return res.status(400).json({ success: false, error: { message: 'Password must be at least 6 characters' } });
         }
 
@@ -57,6 +60,7 @@ const signup = async (req, res, next) => {
 
         const passwordHash = await bcrypt.hash(password, 10);
         const role = isAdminSignup({ name, email, password }) ? 'admin' : 'citizen';
+
         const user = await User.create({
             name: name.trim(),
             email: email.trim().toLowerCase(),
@@ -66,9 +70,15 @@ const signup = async (req, res, next) => {
 
         const token = signToken(user);
 
+        let pendingVolunteer = false;
+        if (String(requestedRole).toLowerCase() === 'volunteer') {
+            await VolunteerRequest.create({ userId: user.id });
+            pendingVolunteer = true;
+        }
+
         return res.status(201).json({
             success: true,
-            data: { token, user }
+            data: { token, user, pendingVolunteer }
         });
     } catch (err) {
         return next(err);
@@ -77,9 +87,9 @@ const signup = async (req, res, next) => {
 
 const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body || {};
 
-        if (!email || !email.trim() || !password) {
+        if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
             return res.status(400).json({ success: false, error: { message: 'Email and password are required' } });
         }
 
@@ -93,10 +103,9 @@ const login = async (req, res, next) => {
             return res.status(401).json({ success: false, error: { message: 'Invalid credentials' } });
         }
 
-        // Admin access control (server-side).
-        // ONLY the specific admin identity (name + email + password) gets admin role.
-        // All other users — even if their DB row says 'admin' — are downgraded to 'citizen'.
-        let role = 'citizen';
+        // Server-side role resolution based strictly on persisted DB user record.
+        let role = user.role || 'citizen';
+
         if (isAdminLogin({ user, password })) {
             role = 'admin';
             if (user.role !== 'admin') {
@@ -134,16 +143,16 @@ const me = async (req, res, next) => {
             return res.status(404).json({ success: false, error: { message: 'User not found' } });
         }
 
-        // Enforce: only the designated admin email can have role 'admin' in responses.
-        const isDesignatedAdmin =
-            String(user.name).trim() === ADMIN_CREDENTIALS.name &&
-            String(user.email).trim().toLowerCase() === ADMIN_CREDENTIALS.email;
+        // Report the stored role. Signup and login already promote the designated
+        // admin after checking the configured password; matching name and email
+        // without that check must not turn an account into an admin.
+        const role = user.role || 'citizen';
 
         const safeUser = {
             id: user.id,
             name: user.name,
             email: user.email,
-            role: isDesignatedAdmin ? (user.role || 'citizen') : 'citizen',
+            role,
             latitude: user.latitude,
             longitude: user.longitude,
             created_at: user.created_at,

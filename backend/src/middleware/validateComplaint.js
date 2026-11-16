@@ -1,3 +1,7 @@
+/* global module */
+const { removeUploadedFile } = require('./uploadMiddleware');
+const VALID_SEVERITIES = new Set(['low', 'medium', 'high']);
+
 /**
  * Validate complaint creation data
  */
@@ -9,41 +13,57 @@ const validateComplaint = (req, res, next) => {
         city,
         issueType,
         description
-    } = req.body;
+    } = req.body || {};
 
     const errors = [];
 
+    // Missing severity keeps the model's existing default of "medium".
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'severity')) {
+        if (typeof req.body.severity !== 'string') {
+            errors.push('Severity must be one of: low, medium, high');
+        } else {
+            const normalizedSeverity = req.body.severity.trim().toLowerCase();
+            if (!VALID_SEVERITIES.has(normalizedSeverity)) {
+                errors.push('Severity must be one of: low, medium, high');
+            } else {
+                req.body.severity = normalizedSeverity;
+            }
+        }
+    }
+
     // Required fields
-    if (!name || name.trim() === '') {
+    if (typeof name !== 'string' || name.trim() === '') {
         errors.push('Name is required');
     }
 
-    if (!phone || phone.trim() === '') {
+    if (typeof phone !== 'string' || phone.trim() === '') {
         errors.push('Phone is required');
+    } else if (!/^[\d\s\-+()]+$/.test(phone)) {
+        errors.push('Phone number contains invalid characters');
+    } else if ((phone.match(/\d/g) || []).length < 10) {
+        errors.push('Phone number must contain at least 10 digits');
     }
 
-    if (!area || area.trim() === '') {
+    if (typeof area !== 'string' || area.trim() === '') {
         errors.push('Area is required');
     }
 
-    if (!city || city.trim() === '') {
+    if (typeof city !== 'string' || city.trim() === '') {
         errors.push('City is required');
     }
 
-    if (!issueType || issueType.trim() === '') {
+    if (typeof issueType !== 'string' || issueType.trim() === '') {
         errors.push('Issue type is required');
     }
 
-    if (!description || description.trim() === '') {
+    if (typeof description !== 'string' || description.trim() === '') {
         errors.push('Description is required');
     }
 
-    // Phone validation (basic)
-    if (phone && !/^[\d\s\-\+\(\)]{10,}$/.test(phone)) {
-        errors.push('Phone number must be at least 10 digits');
-    }
-
     if (errors.length > 0) {
+        removeUploadedFile(req.file);
+        req.file = undefined;
+
         return res.status(400).json({
             success: false,
             error: {
@@ -60,10 +80,10 @@ const validateComplaint = (req, res, next) => {
  * Validate status update
  */
 const validateStatusUpdate = (req, res, next) => {
-    const { status } = req.body;
+    const { status } = req.body || {};
     const validStatuses = ['Pending', 'In Progress', 'Resolved'];
 
-    if (!status || !validStatuses.includes(status)) {
+    if (!status || typeof status !== 'string' || !validStatuses.includes(status)) {
         return res.status(400).json({
             success: false,
             error: {
@@ -79,9 +99,15 @@ const validateStatusUpdate = (req, res, next) => {
  * Validate department assignment
  */
 const validateDepartmentAssignment = (req, res, next) => {
-    const { department } = req.body;
+    const { department, autoAssign } = req.body || {};
 
-    if (!department || department.trim() === '') {
+    // assignComplaint picks the department from the issue type when
+    // autoAssign is set, so a department isn't needed in that case.
+    if (autoAssign === true) {
+        return next();
+    }
+
+    if (!department || typeof department !== 'string' || department.trim() === '') {
         return res.status(400).json({
             success: false,
             error: {

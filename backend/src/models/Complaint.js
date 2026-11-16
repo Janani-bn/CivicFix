@@ -168,9 +168,15 @@ class Complaint {
             throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
         }
 
+        // Reopening releases the old assignment and resolution in the same write.
         const query = `
             UPDATE complaints
-            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            SET status = $1,
+                claimed_by_user_id = CASE WHEN $1 = 'Pending' THEN NULL ELSE claimed_by_user_id END,
+                claimed_by = CASE WHEN $1 = 'Pending' THEN NULL ELSE claimed_by END,
+                resolved_by_user_id = CASE WHEN $1 = 'Pending' THEN NULL ELSE resolved_by_user_id END,
+                resolved_by = CASE WHEN $1 = 'Pending' THEN NULL ELSE resolved_by END,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = $2
             RETURNING *
         `;
@@ -216,6 +222,22 @@ class Complaint {
      * @returns {Object} Updated complaint
      */
     static async join(id, userId = null, sessionId = null) {
+        // Check first: recording a join for an id that doesn't exist yet leaves
+        // a row that later makes the real complaint report "already joined".
+        const existing = await pool.query('SELECT 1 FROM complaints WHERE id = $1', [id]);
+        if (existing.rows.length === 0) {
+            return null;
+        }
+
+        const insertResult = await pool.query(
+            `INSERT OR IGNORE INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)`,
+            [id, userId, sessionId]
+        );
+
+        if (insertResult.rowCount === 0) {
+            return { alreadyJoined: true };
+        }
+
         const query = `
             UPDATE complaints
             SET supporter_count = supporter_count + 1, updated_at = CURRENT_TIMESTAMP
@@ -223,17 +245,7 @@ class Complaint {
             RETURNING *
         `;
         const result = await pool.query(query, [id]);
-        const complaint = result.rows[0] || null;
-
-        if (complaint) {
-            // Record who joined so it appears in My Complaints
-            await pool.query(
-                `INSERT INTO complaint_joins (complaint_id, user_id, session_id) VALUES ($1, $2, $3)`,
-                [id, userId, sessionId]
-            );
-        }
-
-        return complaint;
+        return result.rows[0] || null;
     }
 
     /**
@@ -268,7 +280,19 @@ class Complaint {
                 city,
                 COUNT(*) AS report_count,
                 SUM(supporter_count) AS total_supporters,
-                MAX(severity) AS highest_severity,
+                CASE MAX(
+                    CASE LOWER(COALESCE(severity, ''))
+                        WHEN 'high' THEN 3
+                        WHEN 'medium' THEN 2
+                        WHEN 'low' THEN 1
+                        ELSE 0
+                    END
+                )
+                    WHEN 3 THEN 'high'
+                    WHEN 2 THEN 'medium'
+                    WHEN 1 THEN 'low'
+                    ELSE 'medium'
+                END AS highest_severity,
                 MIN(created_at) AS first_reported,
                 MAX(created_at) AS last_reported,
                 GROUP_CONCAT(complaint_id, ', ') AS complaint_ids
@@ -290,6 +314,64 @@ class Complaint {
         const query = 'DELETE FROM complaints WHERE id = $1 RETURNING id';
         const result = await pool.query(query, [id]);
         return result.rowCount > 0;
+    }
+
+    /**
+     * Claim a complaint (Volunteer)
+     * @param {number|string} id - Complaint internal ID or complaint_id
+     * @param {number} volunteerId - Authenticated volunteer user ID
+     * @param {string} volunteerName - Authenticated volunteer name
+     * @returns {Object|null} Updated complaint or null if not claimable / conflict
+     */
+    static async claim(id, volunteerId, volunteerName) {
+        let complaintId = id;
+        if (typeof id === 'string' && id.startsWith('CF-')) {
+            const existing = await this.findByComplaintId(id);
+            if (!existing) return null;
+            complaintId = existing.id;
+        }
+
+        const query = `
+            UPDATE complaints
+            SET status = 'In Progress',
+                claimed_by_user_id = $1,
+                claimed_by = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $3 AND status = 'Pending' AND allow_volunteers != 'no' AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $1)
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, [volunteerId, volunteerName, complaintId]);
+        return result.rows[0] || null;
+    }
+
+    /**
+     * Resolve a complaint (Volunteer)
+     * @param {number|string} id - Complaint internal ID or complaint_id
+     * @param {number} volunteerId - Authenticated volunteer user ID
+     * @param {string} volunteerName - Authenticated volunteer name
+     * @returns {Object|null} Updated complaint or null if invalid transition
+     */
+    static async resolve(id, volunteerId, volunteerName) {
+        let complaintId = id;
+        if (typeof id === 'string' && id.startsWith('CF-')) {
+            const existing = await this.findByComplaintId(id);
+            if (!existing) return null;
+            complaintId = existing.id;
+        }
+
+        const query = `
+            UPDATE complaints
+            SET status = 'Resolved',
+                resolved_by_user_id = $1,
+                resolved_by = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $3 AND status = 'In Progress' AND (claimed_by_user_id = $1 OR claimed_by_user_id IS NULL)
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, [volunteerId, volunteerName, complaintId]);
+        return result.rows[0] || null;
     }
 }
 

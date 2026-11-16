@@ -1,6 +1,8 @@
 const Complaint = require('../models/Complaint');
+const User = require('../models/User');
 const { routeToDepartment } = require('../utils/departmentRouter');
 const { generateWhatsAppLink } = require('../utils/whatsapp');
+const { removeUploadedFile } = require('../middleware/uploadMiddleware');
 
 /**
  * Create a new complaint
@@ -46,6 +48,8 @@ const createComplaint = async (req, res, next) => {
             }
         });
     } catch (err) {
+        removeUploadedFile(req.file);
+        req.file = undefined;
         next(err);
     }
 };
@@ -281,9 +285,16 @@ const joinComplaint = async (req, res, next) => {
         const userId = req.user?.id || null;
         const sessionId = req.headers['x-session-id'] || null;
 
-        const complaint = await Complaint.join(internalId, userId, sessionId);
+        const result = await Complaint.join(internalId, userId, sessionId);
 
-        if (!complaint) {
+        if (result && result.alreadyJoined) {
+            return res.status(409).json({
+                success: false,
+                error: { message: 'You have already joined this complaint' }
+            });
+        }
+
+        if (!result) {
             const error = new Error('Complaint not found');
             error.statusCode = 404;
             throw error;
@@ -291,7 +302,7 @@ const joinComplaint = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: complaint
+            data: result
         });
     } catch (err) {
         next(err);
@@ -315,6 +326,122 @@ const getGroupedDuplicates = async (req, res, next) => {
     }
 };
 
+/**
+ * Claim a complaint (Volunteer)
+ * POST /complaints/:id/claim
+ */
+const claimComplaint = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        let complaint = await Complaint.findByComplaintId(id);
+        if (!complaint) {
+            const internalId = parseInt(id, 10);
+            if (!isNaN(internalId)) {
+                complaint = await Complaint.findById(internalId);
+            }
+        }
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                error: { message: 'Complaint not found' }
+            });
+        }
+
+        if (complaint.status !== 'Pending') {
+            return res.status(409).json({
+                success: false,
+                error: { message: 'Complaint is already claimed or not in a claimable state' }
+            });
+        }
+
+        if (complaint.allow_volunteers === 'no') {
+            return res.status(403).json({
+                success: false,
+                error: { message: 'This complaint does not allow volunteer claims' }
+            });
+        }
+
+        const sev = typeof complaint.severity === 'string'
+            ? complaint.severity.trim().toLowerCase()
+            : '';
+        const supporterCount = complaint.supporter_count || 1;
+        if (sev === 'high' && supporterCount >= 10) {
+            return res.status(400).json({
+                success: false,
+                error: { message: 'High severity complaints with high report count must be handled by government authorities' }
+            });
+        }
+
+        const user = req.dbUser || (await User.findById(req.user.id));
+        const updated = await Complaint.claim(complaint.id, user.id, user.name);
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                error: { message: 'Complaint is already claimed or not in a claimable state' }
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: updated
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * Resolve a complaint (Volunteer)
+ * POST /complaints/:id/resolve
+ */
+const resolveComplaint = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        let complaint = await Complaint.findByComplaintId(id);
+        if (!complaint) {
+            const internalId = parseInt(id, 10);
+            if (!isNaN(internalId)) {
+                complaint = await Complaint.findById(internalId);
+            }
+        }
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                error: { message: 'Complaint not found' }
+            });
+        }
+
+        if (complaint.status !== 'In Progress') {
+            return res.status(400).json({
+                success: false,
+                error: { message: 'Only complaints in progress can be resolved' }
+            });
+        }
+
+        const user = req.dbUser || (await User.findById(req.user.id));
+        const updated = await Complaint.resolve(complaint.id, user.id, user.name);
+
+        if (!updated) {
+            return res.status(400).json({
+                success: false,
+                error: { message: 'Complaint cannot be resolved from its current status' }
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: updated
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     createComplaint,
     getComplaintsByUser,
@@ -325,5 +452,7 @@ module.exports = {
     updateComplaintStatus,
     assignComplaint,
     joinComplaint,
-    getGroupedDuplicates
+    getGroupedDuplicates,
+    claimComplaint,
+    resolveComplaint
 };

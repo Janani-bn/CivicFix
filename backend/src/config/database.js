@@ -8,6 +8,12 @@ const dbPath = path.join(__dirname, '../../civicfix.sqlite');
 // Initialize the database
 const db = new Database(dbPath, { verbose: console.log });
 
+// Register math functions needed by Haversine distance queries
+db.function('radians', (degrees) => (degrees * Math.PI) / 180);
+db.function('acos', (value) => Math.acos(Math.min(1, Math.max(-1, value))));
+db.function('cos', (value) => Math.cos(value));
+db.function('sin', (value) => Math.sin(value));
+
 // Emulate a pg-pool-like interface for minimal changes in other files
 const pool = {
     /**

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE, API_ORIGIN } from '../services/api';
+import {
+  fetchLiveFeed,
+  formatDateTime,
+  fetchComments,
+  postCommentApi,
+  CommentSection
+} from '../utils/liveFeedLogic';
 import './LiveFeed.css';
-
-const formatDateTime = (value) => {
-  if (!value) return '';
-  const iso = String(value).replace(' ', 'T');
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString();
-};
 
 const statusClass = (status) =>
   String(status || '').toLowerCase().replace(' ', '-');
@@ -28,38 +28,16 @@ const LiveFeed = () => {
     const fetchFeed = async () => {
       setLoading(true);
       setError('');
+
       try {
-        const res = await fetch(`${API_BASE}/complaints`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || 'Failed to load feed');
-        setItems(data.data || []);
+        const data = await fetchLiveFeed(API_BASE);
+
+        setItems(data);
+        setLoading(false);
       } catch (err) {
-        console.warn('Backend fetchFeed error. Simulating success...', err);
-        // MOCK FALLBACK for UI testing without backend
-        setTimeout(() => {
-          const localIssues = JSON.parse(localStorage.getItem('civicfix_issues') || '[]');
-          const formattedLocalIssues = localIssues.map(issue => ({
-            id: issue.id || Math.random(),
-            complaint_id: issue.complaint_id || issue.id || `CMP-${Math.floor(Math.random() * 8000)}`,
-            issue_type: issue.issueType || issue.title,
-            description: issue.description,
-            status: issue.status || 'Pending',
-            area: issue.area,
-            city: issue.city,
-            reporter_name: 'Guest Citizen',
-            created_at: issue.submittedAt || issue.created_at || new Date().toISOString()
-          }));
-
-          const allMockItems = [
-            ...formattedLocalIssues,
-            { id: 1, complaint_id: 'CMP-1234', issue_type: 'Pothole', description: 'Large pothole on main road', status: 'Pending', area: 'Downtown', city: 'Metropolis', reporter_name: 'John Doe', created_at: new Date().toISOString() },
-            { id: 2, complaint_id: 'CMP-5678', issue_type: 'Broken Streetlight', description: 'Streetlight is completely out', status: 'In Progress', area: 'East End', city: 'Metropolis', reporter_name: 'Jane Smith', created_at: new Date(Date.now() - 3600000).toISOString() },
-            { id: 'mock1', complaint_id: 'mock1', issue_type: 'Garbage Overflow', description: 'Garbage not collected for a week', status: 'Resolved', area: 'Northside', city: 'Metropolis', reporter_name: 'Bob Johnson', created_at: new Date(Date.now() - 86400000).toISOString() }
-          ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-          setItems(allMockItems);
-          setLoading(false);
-        }, 800);
+        console.error('Backend fetchFeed error:', err);
+        setError(err.message || 'Failed to load the live feed. Please try again.');
+        setLoading(false);
       }
     };
     fetchFeed();
@@ -89,35 +67,31 @@ const LiveFeed = () => {
     [items]
   );
 
-  const ensureCommentsLoaded = async (complaintId) => {
+  const ensureCommentsLoaded = async (complaintId, force = false) => {
     if (!complaintId) return;
-    if (comments[complaintId]?.loading) return;
-    if (comments[complaintId]?.list) return;
+    if (!force && comments[complaintId]?.loading) return;
+    if (!force && comments[complaintId]?.list && !comments[complaintId]?.error) return;
 
-    setComments((prev) => ({ ...prev, [complaintId]: { loading: true, error: '', list: [] } }));
+    setComments((prev) => ({
+      ...prev,
+      [complaintId]: { loading: true, error: '', list: prev[complaintId]?.list || [] }
+    }));
     try {
-      const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(complaintId)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to load comments');
+      const list = await fetchComments(complaintId, { apiBase: API_BASE });
       setComments((prev) => ({
         ...prev,
-        [complaintId]: { loading: false, error: '', list: data.data || [] }
+        [complaintId]: { loading: false, error: '', list }
       }));
     } catch (err) {
-      console.warn('Backend ensureCommentsLoaded error. Simulating success...', err);
-      // MOCK FALLBACK for UI testing without backend
-      setTimeout(() => {
-        setComments((prev) => ({
-          ...prev,
-          [complaintId]: { 
-            loading: false, 
-            error: '', 
-            list: [
-              { id: Date.now() + Math.random(), author_name: 'City Admin', message: 'We are looking into this issue.', created_at: new Date().toISOString() }
-            ] 
-          }
-        }));
-      }, 500);
+      console.error('ensureCommentsLoaded error:', err);
+      setComments((prev) => ({
+        ...prev,
+        [complaintId]: {
+          loading: false,
+          error: err.message || 'Failed to load comments. Please try again.',
+          list: prev[complaintId]?.list || []
+        }
+      }));
     }
   };
 
@@ -128,20 +102,17 @@ const LiveFeed = () => {
   }, [complaintIds.join('|')]);
 
   const postComment = async (complaintId) => {
-    const draft = drafts[complaintId] || { name: '', message: '' };
+    const draft = drafts[complaintId] || { name: '', message: '', posting: false, error: '' };
     const name = (draft.name || '').trim();
     const message = (draft.message || '').trim();
-    if (!message) return;
+    if (!message || draft.posting) return;
 
-    setDrafts((prev) => ({ ...prev, [complaintId]: { ...draft, posting: true } }));
+    setDrafts((prev) => ({ ...prev, [complaintId]: { ...draft, posting: true, error: '' } }));
     try {
-      const res = await fetch(`${API_BASE}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complaintId, name, message })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to post comment');
+      const newComment = await postCommentApi(
+        { complaintId, name, message },
+        { apiBase: API_BASE }
+      );
 
       setComments((prev) => {
         const existing = prev[complaintId]?.list || [];
@@ -150,28 +121,24 @@ const LiveFeed = () => {
           [complaintId]: {
             loading: false,
             error: '',
-            list: [...existing, data.data]
+            list: [...existing, newComment]
           }
         };
       });
-      setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false } }));
+      setDrafts((prev) => ({
+        ...prev,
+        [complaintId]: { name: draft.name || '', message: '', posting: false, error: '' }
+      }));
     } catch (err) {
-      console.warn('Backend postComment error. Simulating success...', err);
-      // MOCK FALLBACK for UI testing without backend
-      setTimeout(() => {
-        setComments((prev) => {
-          const existing = prev[complaintId]?.list || [];
-          return {
-            ...prev,
-            [complaintId]: {
-              loading: false,
-              error: '',
-              list: [...existing, { id: Date.now(), author_name: name || 'Anonymous', message, created_at: new Date().toISOString() }]
-            }
-          };
-        });
-        setDrafts((prev) => ({ ...prev, [complaintId]: { name: draft.name || '', message: '', posting: false } }));
-      }, 800);
+      console.error('postComment error:', err);
+      setDrafts((prev) => ({
+        ...prev,
+        [complaintId]: {
+          ...draft,
+          posting: false,
+          error: err.message || 'Failed to post comment. Please try again.'
+        }
+      }));
     }
   };
 
@@ -187,7 +154,9 @@ const LiveFeed = () => {
           </div>
         </div>
 
-        {error && <div className="error-banner">{error}</div>}
+        {error && items.length > 0 && (
+          <div className="error-banner">{error}</div>
+        )}
 
         <div
           className="feed-viewport"
@@ -201,6 +170,10 @@ const LiveFeed = () => {
         >
           {loading ? (
             <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>Loading feed...</div>
+          ) : error && items.length === 0 ? (
+            <div className="error-banner">
+              {error}
+            </div>
           ) : items.length === 0 ? (
             <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>No complaints yet.</div>
           ) : (
@@ -208,7 +181,7 @@ const LiveFeed = () => {
               {items.map((c) => {
                 const complaintId = c.complaint_id;
                 const commentState = comments[complaintId] || { loading: false, error: '', list: [] };
-                const draft = drafts[complaintId] || { name: '', message: '', posting: false };
+                const draft = drafts[complaintId] || { name: '', message: '', posting: false, error: '' };
 
                 return (
                   <div key={c.id} className="feed-item">
@@ -235,71 +208,17 @@ const LiveFeed = () => {
                         <div className="feed-meta">{formatDateTime(c.created_at)}</div>
                       </div>
 
-                      <div className="comments">
-                        <div className="comments-title">Comments</div>
-
-                        {commentState.error && (
-                          <div className="error-banner" style={{ marginBottom: '0.75rem' }}>
-                            {commentState.error}
-                          </div>
-                        )}
-
-                        {commentState.loading ? (
-                          <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>Loading comments...</div>
-                        ) : (
-                          <div className="comment-list">
-                            {commentState.list.length === 0 ? (
-                              <div style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>
-                                No comments yet — be the first.
-                              </div>
-                            ) : (
-                              commentState.list.map((cm) => (
-                                <div key={cm.id} className="comment">
-                                  <div className="comment-head">
-                                    <div className="comment-author">{cm.author_name}</div>
-                                    <div className="comment-time">{formatDateTime(cm.created_at)}</div>
-                                  </div>
-                                  <div className="comment-msg">{cm.message}</div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-
-                        <div className="comment-form">
-                          <input
-                            placeholder="Your name (optional)"
-                            value={draft.name}
-                            onChange={(e) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [complaintId]: { ...draft, name: e.target.value }
-                              }))
-                            }
-                          />
-                          <input
-                            placeholder="Write a comment..."
-                            value={draft.message}
-                            onChange={(e) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [complaintId]: { ...draft, message: e.target.value }
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') postComment(complaintId);
-                            }}
-                          />
-                          <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.65rem 1rem', borderRadius: '9999px' }}
-                            disabled={draft.posting || !draft.message.trim()}
-                            onClick={() => postComment(complaintId)}
-                          >
-                            {draft.posting ? 'Posting...' : 'Post'}
-                          </button>
-                        </div>
-                      </div>
+                      <CommentSection
+                        complaintId={complaintId}
+                        commentState={commentState}
+                        draft={draft}
+                        onRetryLoad={(id) => ensureCommentsLoaded(id, true)}
+                        onRetryPost={(id) => postComment(id)}
+                        onDraftChange={(id, nextDraft) =>
+                          setDrafts((prev) => ({ ...prev, [id]: nextDraft }))
+                        }
+                        onPostComment={(id) => postComment(id)}
+                      />
                     </div>
                   </div>
                 );
@@ -313,4 +232,3 @@ const LiveFeed = () => {
 };
 
 export default LiveFeed;
-
